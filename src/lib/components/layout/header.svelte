@@ -8,9 +8,7 @@
 
   interface TriggerSnippetProps { props: Record<string, unknown>; }
   const crumbs = ['Dashboard', 'Reports'];
-  const sidebar = Sidebar.useSidebar();
 </script>
-<button on:click={() => sidebar.toggle()}>Menu</button>
 
 <header class="flex items-center justify-between h-16 px-4 border-b">
     <div class="flex items-center gap-4">
