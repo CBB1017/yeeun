@@ -1,24 +1,32 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
 <script lang="ts">
-  import * as Card from '$lib/components/ui/card';
-  import { Button } from '$lib/components/ui/button';
-  import { Label } from '$lib/components/ui/label';
-  import { Input } from '$lib/components/ui/input';
+  import { setSlots } from '$lib/layout-snippets';
+  setSlots({ sidebar, header, children });
 </script>
 
-<Card.Root class="max-w-sm mx-auto mt-8">
-    <Card.Header>
-        <Card.Title>Login</Card.Title>
-        <Card.Description>Please enter your credentials.</Card.Description>
-    </Card.Header>
-    <Card.Content>
-        <Label for="email">Email</Label>
-        <Input id="email" type="email" required />
-        <Label for="password">Password</Label>
-        <Input id="password" type="password" required />
-    </Card.Content>
-    <Card.Footer>
-        <Button class="w-full">Sign In</Button>
-    </Card.Footer>
-</Card.Root>
+{#snippet sidebar()}
+    <div class="space-y-4">
+        <a href="/" class="block text-lg font-semibold hover:text-blue-600">Dashboard</a>
+        <a href="/reports" class="block text-lg font-semibold hover:text-blue-600">Reports</a>
+        <a href="/settings" class="block text-lg font-semibold hover:text-blue-600">Settings</a>
+    </div>
+{/snippet}
+
+{#snippet header()}
+    <div class="flex justify-between items-center w-full">
+        <h1 class="text-2xl font-bold">Welcome to Dashboard</h1>
+        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            New Report
+        </button>
+    </div>
+{/snippet}
+
+{#snippet children()}
+    <div class="grid grid-cols-3 gap-6">
+        {#each Array(3) as _, i}
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">Card {i + 1}</h2>
+                <p class="text-gray-600">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+            </div>
+        {/each}
+    </div>
+{/snippet}
