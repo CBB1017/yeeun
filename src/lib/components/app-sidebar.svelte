@@ -2,10 +2,12 @@
   import * as Sidebar from '$lib/components/ui/sidebar/index.js';
   import HomeIcon from '@lucide/svelte/icons/home';
   import SettingsIcon from '@lucide/svelte/icons/settings';
+  import { DockIcon } from "@lucide/svelte";
 
   const items = [
     { title: 'Home', url: '/', icon: HomeIcon },
-    { title: 'Settings', url: '/settings', icon: SettingsIcon }
+    { title: 'Settings', url: '/settings', icon: SettingsIcon },
+    { title: 'Excel', url: '/excel', icon: DockIcon }
   ];
 </script>
 
