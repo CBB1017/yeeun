@@ -4,6 +4,7 @@
   import AppSidebar from '$lib/components/app-sidebar.svelte';
   import Header from '$lib/components/layout/header.svelte';
   import type { LayoutProps } from './$types';
+
   let { children }: LayoutProps = $props();
 </script>
 
@@ -11,12 +12,15 @@
 
 
 <!-- 실제 레이아웃 구조 -->
-<div class="flex h-screen bg-gray-100">
+<div class="flex h-screen w-screen">
     <Sidebar.Provider>
-        <AppSidebar />
-        <main>
-            <Header />
-            {@render children()}
+        <AppSidebar/>
+
+        <main class="flex-1 min-h-0 min-w-0 flex flex-col">
+            <Header/>
+            <div class="flex-1 min-h-0 min-w-0 overflow-auto">
+                {@render children()}
+            </div>
         </main>
     </Sidebar.Provider>
 </div>
