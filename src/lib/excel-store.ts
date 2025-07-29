@@ -1,0 +1,22 @@
+// src/lib/storeExcel.ts
+import { load } from '@tauri-apps/plugin-store';
+
+const store = await load('excel-state.json', { autoSave: 1000 * 10 });
+
+export async function saveExcelState({ path, sheets, value }: {
+  path: string;
+  sheets: [string, string[][]][];
+  value: string;
+}) {
+  await store.set('path', path);
+  await store.set('sheets', sheets);
+  await store.set('value', value);
+  await store.save();
+}
+
+export async function loadExcelState() {
+  const path = await store.get<string>('path') ?? '';
+  const sheets = await store.get<[string, string[][]][]>('sheets') ?? [];
+  const value = await store.get<string>('value') ?? '0';
+  return { path, sheets, value };
+}
