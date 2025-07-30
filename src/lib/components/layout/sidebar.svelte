@@ -1,5 +1,5 @@
 <script lang="ts">
-  import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+  import * as Sidebar from '$ui/sidebar';
   import HomeIcon from '@lucide/svelte/icons/home';
   import SettingsIcon from '@lucide/svelte/icons/settings';
   import { DockIcon } from "@lucide/svelte";

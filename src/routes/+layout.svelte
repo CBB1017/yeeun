@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
-  import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-  import AppSidebar from '$lib/components/app-sidebar.svelte';
+  import {Provider} from '$ui/sidebar/index.js';
+  import AppSidebar from '$lib/components/layout/sidebar.svelte';
   import Header from '$lib/components/layout/header.svelte';
   import type { LayoutProps } from './$types';
 
@@ -13,7 +13,7 @@
 
 <!-- 실제 레이아웃 구조 -->
 <div class="flex h-screen w-screen">
-    <Sidebar.Provider>
+    <Provider>
         <AppSidebar/>
 
         <main class="flex-1 min-h-0 min-w-0 flex flex-col">
@@ -22,5 +22,5 @@
                 {@render children()}
             </div>
         </main>
-    </Sidebar.Provider>
+    </Provider>
 </div>

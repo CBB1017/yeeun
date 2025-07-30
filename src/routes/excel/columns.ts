@@ -8,7 +8,7 @@ import { Checkbox } from "$ui/checkbox";
 export type ExcelRow = Record<string, any>;
 
 export function makeDynamicColumns(header: string[]): ColumnDef<Record<string, string>>[] {
-  return header.map((col) => {
+  const baseColumns = header.map((col) => {
     // 금액 포함된 컬럼은 포맷 셀 커스텀
     if (col.includes("금액")) {
       return {
@@ -17,6 +17,7 @@ export function makeDynamicColumns(header: string[]): ColumnDef<Record<string, s
           renderComponent(DataTableEmailButton, {
             onclick: column.getToggleSortingHandler(),
             columnName: col,
+            sorted: column.getIsSorted?.()
           }),
         cell: ({ row }) => {
           const value = row.getValue(col);
@@ -40,68 +41,14 @@ export function makeDynamicColumns(header: string[]): ColumnDef<Record<string, s
           renderComponent(DataTableEmailButton, {
             onclick: column.getToggleSortingHandler(),
             columnName: col,
+            sorted: column.getIsSorted?.()
           }),
         enableSorting: true,
         enableColumnFilter: true,
       };
     }
   });
-}
-
-export function sheetRowsToObjects(header: string[], rows: string[][]) {
-  return rows.map((row, idx) => {
-    const obj: Record<string, string> = {};
-    header.forEach((k, i) => {
-      obj[k] = row[i] ?? "";
-    });
-    obj["id"] = `${idx}`; // id 필요시
-    return obj;
-  });
-}
-
-export const columns: ColumnDef<ExcelRow>[] = [
-  {
-    accessorKey: "amount",
-    header: () => {
-      const amountHeaderSnippet = createRawSnippet(() => ({
-        render: () => `<div class="text-right">Amount</div>`,
-      }));
-      return renderSnippet(amountHeaderSnippet, "");
-    },
-    cell: ({ row }) => {
-      const formatter = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      });
-
-      const amountCellSnippet = createRawSnippet<[string]>((getAmount) => {
-        const amount = getAmount();
-        return {
-          render: () => `<div class="text-right font-medium">${amount}</div>`,
-        };
-      });
-
-      return renderSnippet(
-        amountCellSnippet,
-        formatter.format(parseFloat(row.getValue("amount")))
-      );
-    },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      // You can pass whatever you need from `row.original` to the component
-      return renderComponent(DataTableActions, { id: row.original.id });
-    },
-  },
-  {
-    accessorKey: "소속",
-    header: ({ column }) =>
-      renderComponent(DataTableEmailButton, {
-        onclick: column.getToggleSortingHandler(),
-      }),
-  },
-  {
+  const selectColumn = {
     id: "select",
     header: ({ table }) =>
       renderComponent(Checkbox, {
@@ -120,5 +67,19 @@ export const columns: ColumnDef<ExcelRow>[] = [
       }),
     enableSorting: false,
     enableHiding: false,
-  },
-];
+  };
+
+  // selectColumn을 배열 맨 앞에 추가 (스프레드!)
+  return [selectColumn, ...baseColumns];
+}
+
+export function sheetRowsToObjects(header: string[], rows: string[][]) {
+  return rows.map((row, idx) => {
+    const obj: Record<string, string> = {};
+    header.forEach((k, i) => {
+      obj[k] = row[i] ?? "";
+    });
+    obj["id"] = `${idx}`; // id 필요시
+    return obj;
+  });
+}
