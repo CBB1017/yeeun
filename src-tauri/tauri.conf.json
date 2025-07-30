@@ -2,9 +2,9 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "yeeun",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "byeong.can.yeeun",
   "build": {
-    "frontendDist": "../.svelte-kit/output/client",
+    "frontendDist": "../build",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm run dev",
     "beforeBuildCommand": "pnpm run build"
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "yeeun",
+        "title": "일하자 조예은",
         "width": 800,
         "height": 600,
         "resizable": true,

@@ -14,7 +14,7 @@
         class="flex items-center gap-1 px-2 py-1 font-medium text-sm rounded w-full min-w-0 max-w-full select-none"
         onclick={onclick}
 >
-  <span class="block max-w-[180px] overflow-hidden whitespace-normal break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] line-clamp-2 text-left text-ellipsis">
+  <span class="max-w-[180px] overflow-hidden whitespace-normal break-words line-clamp-2">
     {columnName}
   </span>
   {#if sorted}

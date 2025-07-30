@@ -7,7 +7,8 @@
   import { loadExcelState, saveExcelState } from '$lib/excel-store';
   import { onMount } from "svelte";
   import DataTable from "./data-table.svelte";
-  import { makeDynamicColumns, sheetRowsToObjects } from "./columns.js";
+  import { makeDynamicColumns, sheetRowsToObjects } from "./columns";
+  import { columnWidths } from '$lib/column-store';
 
   type SheetEntry = [string, string[][]];
   let sheets = $state<SheetEntry[]>( [] );
@@ -20,6 +21,7 @@
       sheets = loaded.sheets;
       value = loaded.value;
       selectedPath = loaded.path;
+      columnWidths.update(current => ({ ...current, ...loaded.columnWidths }));
     }
     load();
   });
@@ -32,24 +34,29 @@
     sheets = await invoke<SheetEntry[]>( 'read_all_sheets', { filePath: selected } );
     value = '0';
     selectedPath = typeof selected === "string" ? selected : ""; // 경로 저장
-    await saveExcelState({ path: selectedPath, sheets, value });
+    await saveExcelState({ path: selectedPath, sheets, value, columnWidths: $columnWidths });
   }
   // --- 값이 바뀔 때마다 자동 저장 ---
   $effect(() => {
-    async function save() {
-      if (sheets.length > 0) {
-        await saveExcelState({ path: selectedPath, sheets, value });
-      }
+    console.log('header:', header);
+    console.log('rowData:', rowData);
+    console.log('data:', data); // sheetRowsToObjects 결과
+    if ($columnWidths && sheets.length > 0) {
+      saveExcelState({
+        path: selectedPath,
+        sheets,
+        value,
+        columnWidths: $columnWidths,
+      });
     }
-    save();
   });
 
-
   // 엑셀 데이터: sheets, value
-  let header = $derived(sheets.length > 0 ? sheets[Number(value)][1][0] : []);
+  let header = $derived(sheets.length > 0 ? [...sheets[Number(value)][1][0]] : []);
   let rowData = $derived(sheets.length > 0 ? sheets[Number(value)][1].slice(1) : []);
-  let columns = $derived(makeDynamicColumns(header));
+  let columns = $derived(makeDynamicColumns([...header]));
   let data = $derived(sheetRowsToObjects(header, rowData));
+
 </script>
 <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-auto">
     <!-- 상단: 파일 선택 바(한줄 배치 + 패딩) -->
