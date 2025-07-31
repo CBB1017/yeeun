@@ -1,10 +1,4 @@
 <script lang="ts">
-  import * as Select from '$ui/select';
-  import * as Table from '$ui/table';
-  import * as Button from '$ui/button';
-  import { open } from '@tauri-apps/plugin-dialog';
-  import { invoke } from '@tauri-apps/api/core';
-  import { columnWidths } from '$lib/column-store';
   import ChartAreaInteractive from "$lib/components/chart-area-interactive.svelte";
   import SectionCards from "$lib/components/section-cards.svelte";
   import DataTable from "$lib/components/data-table.svelte";

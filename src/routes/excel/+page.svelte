@@ -9,11 +9,15 @@
   import DataTable from "./data-table.svelte";
   import { makeDynamicColumns, sheetRowsToObjects } from "./columns";
   import { columnWidths } from '$lib/column-store';
+  import { debounce } from '$lib/utils';
 
   type SheetEntry = [string, string[][]];
   let sheets = $state<SheetEntry[]>( [] );
   let value = $state( '0' );
   let selectedPath = $state(""); // 파일 경로 표시용
+
+  const saveDebounced = debounce(saveExcelState, 1000);
+
   // --- 최초 진입 시 Store에서 복원 ---
   onMount(() => {
     async function load() {
@@ -38,11 +42,8 @@
   }
   // --- 값이 바뀔 때마다 자동 저장 ---
   $effect(() => {
-    console.log('header:', header);
-    console.log('rowData:', rowData);
-    console.log('data:', data); // sheetRowsToObjects 결과
     if ($columnWidths && sheets.length > 0) {
-      saveExcelState({
+      saveDebounced({
         path: selectedPath,
         sheets,
         value,

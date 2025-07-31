@@ -15,35 +15,19 @@
   import ArrowUpDownIcon from "@lucide/svelte/icons/arrow-up-down";
   import type { Table as TanTable } from '@tanstack/table-core';
   import { Separator } from "$ui/separator";
-  import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "$ui/tooltip";
   import { Input } from "$ui/input";
   import { columnWidths } from '$lib/column-store';
   import {
     createSvelteTable,
-    FlexRender,
   } from "$ui/data-table/index.js";
   import * as Table from "$ui/table";
   import { Button } from "$ui/button";
   import { DEFAULT_COLUMN_WIDTHS, type ExcelRow } from "./columns";
+  import CellEllipsedTooltip from "./cell-with-ellipsed-tooltip.svelte"
+  import HeaderEllipsedTooltip from "./header-with-ellipsed-tooltip.svelte"
+  import { checkEllipsed, handleResizeStart } from "$lib/utils";
   import { onMount } from "svelte";
 
-  const handleResizeStart = ( e: MouseEvent, col: string ) => {
-    const startX = e.clientX;
-    const startWidth = $columnWidths[col] || 120;
-
-    function onMouseMove ( ev: MouseEvent ) {
-      const delta = ev.clientX - startX;
-      columnWidths.update( current => ({ ...current, [col]: Math.max( 60, startWidth + delta ) }) );
-    }
-
-    function onMouseUp () {
-      window.removeEventListener( "mousemove", onMouseMove );
-      window.removeEventListener( "mouseup", onMouseUp );
-    }
-
-    window.addEventListener( "mousemove", onMouseMove );
-    window.addEventListener( "mouseup", onMouseUp );
-  }
   type DataTableProps<TData, TValue> = {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
@@ -59,8 +43,38 @@
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel()
   }));
+
+  // 각 셀의 컨테이너와 tooltip 상태를 저장
+  let cellContainers = $state<Record<string, HTMLDivElement | null>>({});
+  let cellTooltipStates = $state<Record<string, boolean>>({});
+  // 모든 셀의 tooltip 상태를 업데이트하는 함수
+  async function updateAllTooltipStates() {
+    const newStates: Record<string, boolean> = {};
+    for (const [id, container] of Object.entries(cellContainers)) {
+      if (container) {
+        const isEllipsed = await checkEllipsed(container);
+        newStates[id] = isEllipsed;
+      }
+    }
+    cellTooltipStates = newStates;
+  }
+  // 초기 마운트 시 tooltip 상태 설정
+  onMount(() => {
+    setTimeout(() => {
+      updateAllTooltipStates();
+    }, 0);
+  });
+
+  // handleResizeStart에서 호출할 함수
+  function onResizeEnd() {
+    updateAllTooltipStates();
+  }
+
+  // 전역으로 노출해서 handleResizeStart에서 접근 가능하게
+  (globalThis as any).updateTooltipStates = onResizeEnd;
+
   $effect( () => {
-     table = createSvelteTable( {
+    table = createSvelteTable( {
       get data () {
         return filteredData;
       },
@@ -122,20 +136,6 @@
         },
       },
     } );
-    if ( columns ) {
-      let updatedFlag = false;
-      // $columnWidths로 현재 값 접근
-      let updated = { ...$columnWidths };
-      for ( const col of columns ) {
-        const id = col.id ?? (typeof col.accessorKey === "string" ? col.accessorKey : undefined) ?? "COL";
-        if ( !(id in updated) ) {
-          updated[id] = getDefaultWidth( id );
-          updatedFlag = true;
-        }
-      }
-      // 값이 바뀐 경우에만 store 갱신
-      if ( updatedFlag ) columnWidths.set( updated );
-    }
   } );
   let pagination = $state<PaginationState>( { pageIndex: 0, pageSize: 10 } );
   let sorting = $state<SortingState>( [] );
@@ -152,7 +152,6 @@
             .includes( globalFilter.toLowerCase() )
     )
     : data );
-
 </script>
 <div>
     <div class="flex items-center py-4">
@@ -200,25 +199,7 @@
                                       "
                             >
                                 <div class="relative w-full h-full min-w-0">
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger>
-                                                {#if header.column.getCanSort?.()}
-
-                                                    <FlexRender
-                                                            content={header.column.columnDef.header}
-                                                            context={header.getContext()}
-                                                    />
-                                                {/if}
-                                            </TooltipTrigger>
-                                            <TooltipContent class="max-w-xs break-words">
-                                                <FlexRender
-                                                        content={header.column.columnDef.header}
-                                                        context={header.getContext()}
-                                                />
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
+                                    <HeaderEllipsedTooltip {header}/>
                                     <Separator
                                             class="absolute top-0 right-0 bottom-0 bg-gray-200 rounded cursor-col-resize z-10"
                                             style="width: 4px;"
@@ -242,35 +223,11 @@
                                     class="p-1"
                                     style="width:{$columnWidths[cell.column.id]}px;"
                             >
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger>
-                                            <div
-                                                    class="
-            overflow-hidden
-            [display:-webkit-box]
-            [-webkit-line-clamp:2]
-            [-webkit-box-orient:vertical]
-            line-clamp-2
-            w-full
-            max-w-full
-            break-words
-          "
-                                            >
-                                                <FlexRender
-                                                        content={cell.column.columnDef.cell}
-                                                        context={cell.getContext()}
-                                                />
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <FlexRender
-                                                    content={cell.column.columnDef.cell}
-                                                    context={cell.getContext()}
-                                            />
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <CellEllipsedTooltip
+                                        {cell}
+                                        showTooltip={cellTooltipStates[cell.id] ?? false}
+                                        bind:container={cellContainers[cell.id]}
+                                />
                             </Table.Cell>
                         {/each}
                     </Table.Row>

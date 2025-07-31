@@ -10,17 +10,29 @@ export async function saveExcelState({ path, sheets, value, columnWidths }: {
   value: string;
   columnWidths: Record<string, number>;
 }) {
-  await store.set('path', path);
-  await store.set('sheets', sheets);
-  await store.set('value', value);
-  await store.set('columnWidths', columnWidths);
+  console.log('saving excel state');
+  await Promise.all([
+    store.set('path', path),
+    store.set('sheets', sheets),
+    store.set('value', value),
+    store.set('columnWidths', columnWidths),
+  ]);
   await store.save();
+  console.log('saving end excel state');
+
 }
 
 export async function loadExcelState() {
-  const path = await store.get<string>('path') ?? '';
-  const sheets = await store.get<[string, string[][]][]>('sheets') ?? [];
-  const value = await store.get<string>('value') ?? '0';
-  const loadedWidths = await store.get<Record<string, number>>('columnWidths') ?? {};
-  return { path, sheets, value, columnWidths: loadedWidths };
+  const [path, sheets, value, loadedWidths] = await Promise.all([
+    store.get<string>('path'),
+    store.get<[string, string[][]][]>('sheets'),
+    store.get<string>('value'),
+    store.get<Record<string, number>>('columnWidths'),
+  ]);
+  return {
+    path: path ?? '',
+    sheets: sheets ?? [],
+    value: value ?? '0',
+    columnWidths: loadedWidths ?? {},
+  };
 }
