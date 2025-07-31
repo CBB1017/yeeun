@@ -33,7 +33,7 @@
     if ( !selected ) return;
     sheets = await invoke<SheetEntry[]>( 'read_all_sheets', { filePath: selected } );
     value = '0';
-    selectedPath = typeof selected === "string" ? selected : ""; // 경로 저장
+    selectedPath = selected; // 경로 저장
     await saveExcelState({ path: selectedPath, sheets, value, columnWidths: $columnWidths });
   }
   // --- 값이 바뀔 때마다 자동 저장 ---
