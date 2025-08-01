@@ -22,7 +22,11 @@ export function debounce<T extends (...args: any[]) => void>(fn: T, delay = 300)
 	};
 }
 
-export const handleResizeStart = ( e: MouseEvent, col: string ) => {
+export const handleResizeStart = (
+	e: MouseEvent,
+	col: string,
+	onResizeEnd: () => void
+) => {
 	e.preventDefault();
 	e.stopPropagation();
 
@@ -40,9 +44,7 @@ export const handleResizeStart = ( e: MouseEvent, col: string ) => {
 
 		// 리사이즈 완료 후 tooltip 상태 업데이트
 		setTimeout(() => {
-			if ((globalThis as any).updateTooltipStates) {
-				(globalThis as any).updateTooltipStates();
-			}
+			onResizeEnd();
 		}, 0);
 	}
 

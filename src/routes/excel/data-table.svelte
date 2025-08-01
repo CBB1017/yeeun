@@ -37,41 +37,43 @@
     return Math.max( 100, colName.length * 12 + 32 );
   };
   /** reactive states for table */
-  let table: TanTable<ExcelRow> = $state<TanTable<ExcelRow>>(createSvelteTable({
+  let table: TanTable<ExcelRow> = $state<TanTable<ExcelRow>>( createSvelteTable( {
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel()
-  }));
+  } ) );
 
   // 각 셀의 컨테이너와 tooltip 상태를 저장
-  let cellContainers = $state<Record<string, HTMLDivElement | null>>({});
-  let cellTooltipStates = $state<Record<string, boolean>>({});
+  let cellContainers = $state<Record<string, HTMLDivElement | null>>( {} );
+  let cellTooltipStates = $state<Record<string, boolean>>( {} );
+
   // 모든 셀의 tooltip 상태를 업데이트하는 함수
-  async function updateAllTooltipStates() {
+  async function updateAllTooltipStates () {
     const newStates: Record<string, boolean> = {};
-    for (const [id, container] of Object.entries(cellContainers)) {
-      if (container) {
-        const isEllipsed = await checkEllipsed(container);
-        newStates[id] = isEllipsed;
+    for ( const [id, container] of Object.entries( cellContainers ) ) {
+      if ( container ) {
+        newStates[id] = await checkEllipsed( container );
       }
     }
     cellTooltipStates = newStates;
   }
-  // 초기 마운트 시 tooltip 상태 설정
-  onMount(() => {
-    setTimeout(() => {
-      updateAllTooltipStates();
-    }, 0);
-  });
 
-  // handleResizeStart에서 호출할 함수
+  // 초기 마운트 시 tooltip 상태 설정
+  onMount( () => {
+    setTimeout( () => {
+      updateAllTooltipStates();
+    }, 0 );
+  } );
+
   function onResizeEnd() {
     updateAllTooltipStates();
   }
 
-  // 전역으로 노출해서 handleResizeStart에서 접근 가능하게
-  (globalThis as any).updateTooltipStates = onResizeEnd;
+  // 사용 예시
+  function handleColResize(e: MouseEvent, col: string) {
+    handleResizeStart(e, col, onResizeEnd);
+  }
 
   $effect( () => {
     table = createSvelteTable( {
@@ -199,14 +201,14 @@
                                       "
                             >
                                 <div class="relative w-full h-full min-w-0">
-                                    <HeaderEllipsedTooltip {header}/>
+                                    <HeaderEllipsedTooltip {header} />
                                     <Separator
                                             class="absolute top-0 right-0 bottom-0 bg-gray-200 rounded cursor-col-resize z-10"
                                             style="width: 4px;"
                                             orientation="vertical"
                                             aria-orientation="vertical"
                                             aria-label="Resize column"
-                                            onmousedown={(e) => handleResizeStart(e, header.column.id)}
+                                            onmousedown={(e) => handleColResize(e, header.column.id)}
                                     />
                                 </div>
                             </Table.Head>
