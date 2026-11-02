@@ -1,0 +1,12 @@
+node_modules
+build
+dist
+.svelte-kit
+drizzle
+file
+.secrets
+openspec
+package-lock.json
+test-results
+playwright-report
+*.md

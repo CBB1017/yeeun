@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.secrets/
+file/*
+!file/.gitkeep
+node_modules/
+.svelte-kit/
+build/
+backups/
+restore-test/
+dist/
+test-results/
+playwright-report/
+.idea/
