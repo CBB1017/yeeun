@@ -67,8 +67,11 @@ export async function connectionStatus(ownerId: string) {
 
 export async function pickerConfig(ownerId: string) {
 	if (!pickerConfigured()) throw new AppError('NOT_CONFIGURED', 'Google Picker가 설정되지 않음 (운영자 설정 필요)');
-	const { token } = await accessTokenFor(ownerId);
 	const g = config().google;
+	if (!/^[0-9]{6,20}$/.test(g.pickerAppId ?? '')) {
+		throw new AppError('NOT_CONFIGURED', 'GOOGLE_PICKER_APP_ID는 프로젝트 ID가 아니라 숫자로 된 프로젝트 번호여야 합니다 (OAuth 클라이언트 ID 앞부분)');
+	}
+	const { token } = await accessTokenFor(ownerId);
 	return { apiKey: g.pickerApiKey, appId: g.pickerAppId, clientId: g.clientId, accessToken: token, origin: config().publicOrigin };
 }
 
