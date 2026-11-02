@@ -3,7 +3,8 @@ import { db, schema } from '../db';
 import { config, pickerConfigured } from '../config';
 import { decrypt, encrypt } from '../crypto';
 import { AppError } from '../errors';
-import { accessTokenFor, getMeta, revokeToken, DRIVE_SCOPE } from './google';
+import { accessTokenFor, getMeta, revokeToken, DRIVE_SCOPE, DRIVE_READONLY_SCOPE, searchFiles, folderName } from './google';
+import { rankByKeywords, searchHints } from '../plan/interpret';
 import type { FlowResult } from '../auth/google-oidc';
 
 export async function saveConnection(ownerId: string, r: FlowResult) {
@@ -56,13 +57,16 @@ export async function connectionStatus(ownerId: string) {
 			id: schema.oauthConnections.id,
 			email: schema.oauthConnections.email,
 			status: schema.oauthConnections.status,
-			createdAt: schema.oauthConnections.createdAt
+			createdAt: schema.oauthConnections.createdAt,
+			scopes: schema.oauthConnections.scopes
 		})
 		.from(schema.oauthConnections)
 		.where(and(eq(schema.oauthConnections.ownerId, ownerId), inArray(schema.oauthConnections.status, ['active', 'reauth_required'])))
 		.orderBy(desc(schema.oauthConnections.createdAt))
 		.limit(1);
-	return c ?? null;
+	if (!c) return null;
+	const { scopes, ...rest } = c;
+	return { ...rest, searchEnabled: scopes.includes(DRIVE_READONLY_SCOPE) };
 }
 
 export async function pickerConfig(ownerId: string) {
@@ -188,4 +192,62 @@ export async function disconnect(ownerId: string) {
 		);
 	});
 	return { disconnected: true };
+}
+
+export interface DriveCandidate {
+	fileId: string;
+	name: string;
+	mimeType: string;
+	modifiedAt: string | null;
+	folder: string | null;
+	webViewLink: string | null;
+	alreadyAllowed: boolean;
+}
+
+/**
+ * Natural-language search of the user's own Drive (drive.readonly, user decision
+ * 2026-11-02). Returns candidates only: nothing is analysed or bound to a task
+ * until the user confirms a candidate, which registers it as a normal grant.
+ */
+export async function searchDrive(ownerId: string, text: string): Promise<{
+	available: boolean;
+	reason: string | null;
+	keywords: string[];
+	candidates: DriveCandidate[];
+}> {
+	const { keywords, mimeTypes } = searchHints(text);
+	const [conn] = await db()
+		.select({ scopes: schema.oauthConnections.scopes })
+		.from(schema.oauthConnections)
+		.where(and(eq(schema.oauthConnections.ownerId, ownerId), eq(schema.oauthConnections.status, 'active')))
+		.limit(1);
+	if (!conn) return { available: false, reason: 'Drive가 연결되어 있지 않습니다.', keywords, candidates: [] };
+	if (!conn.scopes.includes(DRIVE_READONLY_SCOPE)) {
+		return { available: false, reason: 'Drive 검색 권한(읽기)에 동의하지 않았습니다. Drive를 다시 연결하면 자연어로 찾을 수 있습니다.', keywords, candidates: [] };
+	}
+	if (!keywords.length) return { available: true, reason: '검색할 파일 이름 단서를 찾지 못했습니다. 파일 이름의 일부를 입력하세요.', keywords, candidates: [] };
+	const { token } = await accessTokenFor(ownerId);
+	const ranked = rankByKeywords(await searchFiles(token, keywords, mimeTypes), keywords).slice(0, 10);
+	const allowed = new Set(
+		(await db().select({ id: schema.fileGrants.providerFileId }).from(schema.fileGrants).where(and(eq(schema.fileGrants.ownerId, ownerId), eq(schema.fileGrants.status, 'active')))).map((g) => g.id)
+	);
+	const parentNames = new Map<string, string | null>();
+	for (const f of ranked) {
+		const p = f.parents?.[0];
+		if (p && !parentNames.has(p) && parentNames.size < 10) parentNames.set(p, await folderName(token, p));
+	}
+	return {
+		available: true,
+		reason: ranked.length ? null : '조건에 맞는 Drive 파일을 찾지 못했습니다.',
+		keywords,
+		candidates: ranked.map((f) => ({
+			fileId: f.id,
+			name: f.name,
+			mimeType: f.mimeType,
+			modifiedAt: f.modifiedTime ?? null,
+			folder: f.parents?.[0] ? (parentNames.get(f.parents[0]) ?? null) : null,
+			webViewLink: f.webViewLink ?? null,
+			alreadyAllowed: allowed.has(f.id)
+		}))
+	};
 }

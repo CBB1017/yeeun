@@ -12,11 +12,13 @@ import { AppError } from '../errors';
  */
 
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+export const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const FIELDS = 'id,name,mimeType,modifiedTime,headRevisionId,size,md5Checksum,trashed,webViewLink,parents';
 
 export interface DriveMeta {
+	parents?: string[];
 	id: string;
 	name: string;
 	mimeType: string;
@@ -190,6 +192,35 @@ async function googleErrorReason(res: Response): Promise<string | null> {
 	try {
 		const j = (await res.json()) as { error?: { errors?: { reason?: string }[]; status?: string; details?: { reason?: string }[] } };
 		return j.error?.errors?.[0]?.reason ?? j.error?.details?.find((d) => d.reason)?.reason ?? j.error?.status ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** Escape a value for a Drive `q` string literal. */
+export function driveQueryLiteral(v: string): string {
+	return v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+export function buildSearchQuery(keywords: string[], mimeTypes: string[]): string {
+	const parts = ['trashed = false', "mimeType != 'application/vnd.google-apps.folder'"];
+	if (keywords.length) parts.push(`(${keywords.map((k) => `name contains '${driveQueryLiteral(k)}'`).join(' or ')})`);
+	if (mimeTypes.length) parts.push(`(${mimeTypes.map((m) => `mimeType = '${driveQueryLiteral(m)}'`).join(' or ')})`);
+	return parts.join(' and ');
+}
+
+/** Name search in the user's Drive (requires drive.readonly). Never downloads content. */
+export async function searchFiles(token: string, keywords: string[], mimeTypes: string[], pageSize = 50): Promise<DriveMeta[]> {
+	const q = buildSearchQuery(keywords, mimeTypes);
+	const url = `${API}/files?q=${encodeURIComponent(q)}&pageSize=${pageSize}&orderBy=modifiedTime desc&fields=files(${FIELDS})&supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives`;
+	const res = await driveFetch(token, url);
+	return ((await res.json()) as { files?: DriveMeta[] }).files ?? [];
+}
+
+export async function folderName(token: string, folderId: string): Promise<string | null> {
+	try {
+		const res = await driveFetch(token, `${API}/files/${folderId}?fields=name&supportsAllDrives=true`);
+		return ((await res.json()) as { name?: string }).name ?? null;
 	} catch {
 		return null;
 	}

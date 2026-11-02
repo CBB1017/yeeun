@@ -224,3 +224,59 @@ export function remainingQuestions(plan: TaskPlan, confirmedTimezone: boolean): 
 	}
 	return q;
 }
+
+// ---------- natural-language Drive search hints ----------
+
+const SEARCH_STOP = new Set([
+	...STOP,
+	'마감', '이내', '안에', '동안', '한달', '달', '일', '주', '매일', '매주', '평일', '주말', '오전', '오후', '시', '분',
+	'월', '화', '수', '목', '금', '토', '요일', '메일', '이메일', '푸시', '알림', '보내줘', '보내', '찾아줘', '찾아', '만들어줘',
+	'정리해줘', '요약', '요약해줘', '있는', '해당', '관련', '내', '나의', '그', '이', '저', 'pdf', 'csv', 'xlsx', 'ppt', 'pptx',
+	'엑셀', 'excel', '스프레드시트', '파워포인트', '슬라이드', '문서', '시트', 'drive', '드라이브', '구글', 'google', '폴더'
+]);
+const PARTICLES = /(에서|으로|부터|까지|에게|한테|이랑|하고|처럼|보다|에는|에서의|의|을|를|은|는|이|가|에|로|와|과|도|만)$/;
+
+export const MIME_HINTS: { re: RegExp; mimes: string[] }[] = [
+	{
+		re: /엑셀|excel|xlsx?|스프레드시트|시트/i,
+		mimes: [
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			'application/vnd.ms-excel',
+			'application/vnd.google-apps.spreadsheet',
+			'text/csv'
+		]
+	},
+	{ re: /\bpdf\b/i, mimes: ['application/pdf'] },
+	{
+		re: /파워포인트|pptx?|슬라이드|발표\s*자료/i,
+		mimes: [
+			'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+			'application/vnd.ms-powerpoint',
+			'application/vnd.google-apps.presentation'
+		]
+	},
+	{ re: /\bcsv\b/i, mimes: ['text/csv'] }
+];
+
+/** Keywords (file-name clues) and MIME types implied by a natural-language request. */
+export function searchHints(text: string): { keywords: string[]; mimeTypes: string[] } {
+	const words = text
+		.normalize('NFC')
+		.toLowerCase()
+		.split(/[^\p{L}\p{N}]+/u)
+		.map((w) => w.replace(PARTICLES, ''))
+		.filter((w) => w.length >= 2 && !SEARCH_STOP.has(w) && !/^\d+$/.test(w));
+	const keywords = [...new Set(words)].slice(0, 6);
+	const mimeTypes = [...new Set(MIME_HINTS.filter((h) => h.re.test(text)).flatMap((h) => h.mimes))];
+	return { keywords, mimeTypes };
+}
+
+/** Rank Drive results by how many keywords their name contains (ties: most recently modified first). */
+export function rankByKeywords<T extends { name: string }>(files: T[], keywords: string[]): T[] {
+	const score = (n: string) => keywords.filter((k) => n.toLowerCase().normalize('NFC').includes(k)).length;
+	return files
+		.map((f, i) => ({ f, s: score(f.name), i }))
+		.filter((x) => x.s > 0 || keywords.length === 0)
+		.sort((a, b) => b.s - a.s || a.i - b.i)
+		.map((x) => x.f);
+}

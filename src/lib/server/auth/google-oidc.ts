@@ -71,7 +71,9 @@ export async function startFlow(purpose: FlowPurpose, opts: { userId?: string; l
 		params.prompt = 'select_account';
 	} else {
 		// Separate, minimal Drive consent: only files the user explicitly opens with this app.
-		params.scope = 'openid email https://www.googleapis.com/auth/drive.file';
+		// drive.file: write new result copies; drive.readonly: natural-language search/read
+		// (user decision 2026-11-02). Users may decline readonly; search then asks to reconnect.
+		params.scope = 'openid email https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
 		params.access_type = 'offline';
 		params.prompt = 'consent';
 		params.include_granted_scopes = 'false';
