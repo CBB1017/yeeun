@@ -25,7 +25,7 @@
 
 ## 3. Google OAuth / Picker
 
-Google Cloud Console에서 OAuth 클라이언트(웹)를 만들고 승인된 리디렉션 URI에 `<PUBLIC_ORIGIN>/auth/google/callback`, `<PUBLIC_ORIGIN>/api/drive/callback`을 등록한다. 범위는 `openid email profile`(로그인)과 `https://www.googleapis.com/auth/drive.file`(파일 허용) 뿐이다. Picker API key는 HTTP referrer를 `<PUBLIC_ORIGIN>/*`, API를 Google Picker API로 제한한다. App ID는 프로젝트 번호다. 도메인이 바뀌면 리디렉션 URI·referrer·Web Push 구독을 다시 확인한다.
+Google Cloud Console에서 OAuth 클라이언트(웹)를 만들고 승인된 리디렉션 URI에 `<PUBLIC_ORIGIN>/auth/google/callback`, `<PUBLIC_ORIGIN>/api/drive/callback`을 등록한다. 범위: `openid email profile`(로그인), `https://www.googleapis.com/auth/drive.file`(결과 복사본 업로드·선택기 허용), `https://www.googleapis.com/auth/drive.readonly`(자연어 Drive 검색·읽기). **Google 인증 플랫폼 → 데이터 액세스**에 세 범위를 추가하고, Google Drive API·Google Picker API를 사용 설정한다. OAuth 동의 화면이 "테스트" 상태면 Drive 토큰이 7일마다 만료되므로 **게시(프로덕션)**한다. drive.readonly는 제한된 범위라 미검증 상태에서는 동의 화면 경고와 최대 100명 제한이 있다. 범위를 바꾼 뒤에는 사용자가 앱에서 Drive를 다시 연결해야 한다. Picker API key는 웹사이트 제한을 `<PUBLIC_ORIGIN>/*` 형식으로 두고 API 제한에 Google Picker API를 포함한다. App ID(`GOOGLE_PICKER_APP_ID`)는 프로젝트 ID가 아니라 **숫자 프로젝트 번호**(OAuth 클라이언트 ID 앞부분)다. 도메인이 바뀌면 리디렉션 URI·referrer·Web Push 구독을 다시 확인한다.
 
 ## 4. 외부 접속(ngrok, 선택)
 

@@ -19,7 +19,12 @@
 - [ ] 4.2 OneDrive connect/disconnect, File Picker selection, server-verified targets, file and folder capture with eTag versions.
 - [ ] 4.3 Verify prompts, checks and result tables across multi-file folder manifests (evidence per file).
 
-## 5. Verification
+## 5. Natural-language Drive discovery
 
-- [ ] 5.1 Unit/integration tests per provider (mock) plus live smoke with the operator's Google and Microsoft accounts; record live vs mock.
-- [ ] 5.2 E2E for attach → plan → run, folder target with added file between runs, skipped-file display; update docs and OpenSpec strict validation.
+- [x] 5.1 Request drive.readonly alongside drive.file; name/type search of the user's Drive returning candidates only; confirmed candidate becomes a grant; reconnect message when readonly was declined. Integration tests with mocked Drive API (3), E2E 19 passed after UI change.
+- [ ] 5.2 Live check after the operator publishes the OAuth app and the user reconnects Drive.
+
+## 6. Verification
+
+- [ ] 6.1 Unit/integration tests per provider (mock) plus live smoke with the operator's Google and Microsoft accounts; record live vs mock.
+- [ ] 6.2 E2E for attach → plan → run, folder target with added file between runs, skipped-file display; update docs and OpenSpec strict validation.

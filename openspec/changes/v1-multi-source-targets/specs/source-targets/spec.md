@@ -46,3 +46,22 @@ The system SHALL list every enumerated file that was not analyzed, with the reas
 #### Scenario: Folder exceeds run limits
 - **WHEN** a target folder's files exceed the configured run file-count or byte limit
 - **THEN** the run fails with a limit error and no partial result is presented as complete
+
+### Requirement: Natural-language Drive discovery
+The system SHALL let a user find Google Drive files from a natural-language request by searching the user's own Drive by file name and type with read-only access the user consented to. Search SHALL return candidates only and SHALL NOT analyze or bind any file by itself.
+
+#### Scenario: Request names a file the user has not added yet
+- **WHEN** a request mentions a research Excel file that is not in the user's authorized list
+- **THEN** the system shows matching Drive candidates with name, type, modified time, and folder
+- **AND** no candidate is analyzed before confirmation
+
+### Requirement: Confirm discovered files before use
+The system SHALL register a discovered Drive file as an authorized source only after the user confirms that candidate. If read-only access was not granted, the system SHALL report that search needs reconnecting and keep manual Picker selection available.
+
+#### Scenario: User confirms one candidate
+- **WHEN** the user confirms one of several Drive candidates
+- **THEN** only that file becomes an authorized source for the task
+
+#### Scenario: Read-only access was declined
+- **WHEN** the user's Drive connection lacks read-only access
+- **THEN** search is reported as unavailable with a reconnect option and no other access path is used
