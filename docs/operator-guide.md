@@ -40,6 +40,8 @@ Google Cloud Console에서 OAuth 클라이언트(웹)를 만들고 승인된 리
 
 기본 호스트 `./file` → 컨테이너 `/data`. 경로 변경은 관리자 화면에서 요청하면 `pending_mount` 상태와 필요한 Compose 수정이 표시된다. 운영자가 compose.yaml의 volume을 수정하고 `docker compose up -d --wait`로 재생성한 뒤 화면에서 적용한다. 앱은 Docker를 제어하지 않는다. 기존 파일은 원래 루트 참조를 유지하며, 명시적 이전은 복사 → hash 검증 → DB 참조 갱신 순서이고 이전 파일 삭제는 운영자가 따로 확인한다.
 
+PC에서 첨부한 파일(홈의 + 버튼·끌어다 놓기·Ctrl+V)은 `users/<uuid>/originals/`에 업무 원본으로 보관된다. 실행 후 정리(raw 스냅샷 삭제) 대상이 아니며 사용자가 첨부를 빼거나 삭제할 때만 지워진다. zip은 업로드 때 풀어 파일별로 저장한다. 파일당 한도는 `MAX_SOURCE_FILE_BYTES`(web의 `BODY_SIZE_LIMIT`도 이 값), zip을 푼 총량 한도는 `MAX_RUN_SOURCE_BYTES`, 한 요청 최대 10개. web 컨테이너가 이 폴더를 쓰므로 호스트 폴더는 uid 1000(node)이 쓸 수 있어야 한다.
+
 ## 7. 업그레이드·백업·복구(Linux 이전)
 
 - 백업: `scripts/backup.sh <보호된_백업_경로>` — worker를 멈추고 pg_dump, `file/` tar, `.secrets`, CLI 인증 volume을 묶어 SHA256SUMS와 행 개수(COUNTS)를 기록한 뒤 worker를 다시 시작한다. **백업에는 비밀값과 로그인 토큰이 들어 있다.** OneDrive 등 동기화 폴더가 아닌 암호화된 위치에 둔다. (프로젝트가 OneDrive 안에 있으면 `.secrets`도 동기화될 수 있으니 주의.)

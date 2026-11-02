@@ -10,8 +10,9 @@
 
 ## 3. Prompt attachments
 
-- [ ] 3.1 Upload API (size/type checks, atomic retained original, sha256), owner isolation, explicit delete with dependent-task confirmation.
-- [ ] 3.2 Capture from retained originals; cleanup never deletes originals; UI attach in the request box and plan editor.
+- [x] 3.1 Upload API (size/type checks, atomic retained original, sha256), owner isolation, explicit delete with dependent-task confirmation. `POST/GET /api/uploads`, `DELETE /api/uploads/:id`; ZIP unpacked into per-file originals with listed skips (user decision 2026-11-02, design.md "첨부 업로드 결정"). Delete is refused (CONFLICT with task names) while a non-archived task uses the file; a confirm-and-pause flow and an uploads management list are not built yet.
+- [ ] 3.2 Capture from retained originals; cleanup never deletes originals; UI attach in the request box and plan editor. Done: capture from the retained original with sha256 check, cleanup leaves originals, request-box attach (+ button, drag and drop, Ctrl+V paste) on home, plan editor/task page display upload sources. Not done: attaching from the plan editor.
+- Validation 2026-11-02 (isolated Compose stack `yeeun-upload`, separate DB/port, branch build): svelte-check 0 errors/0 warnings; vitest unit+integration 165 passed / 3 skipped (new: `src/lib/server/uploads/inspect.test.ts` 10, `tests/integration/uploads.test.ts` 5 — real storage + DB, no CLI); Playwright 23/23 passed incl. new `tests/e2e/attachments.spec.ts` (4) and the existing responsive/axe suite. Drag-and-drop and paste were exercised with synthetic DragEvent/ClipboardEvent in Chromium; an OS-level drag from Explorer and Ctrl+V of a file copied in Explorer were not automated and still need a manual check. The E2E seed now hands the storage `users/` tree to uid 1000 so web can create `originals/`.
 
 ## 4. Folders and OneDrive
 

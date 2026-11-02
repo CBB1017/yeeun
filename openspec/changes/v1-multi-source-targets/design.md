@@ -23,4 +23,16 @@
 
 1. **Google drive.file + 폴더**: Picker로 폴더를 고르면 drive.file 범위에서 그 폴더의 하위 파일 열거·다운로드가 허용되는지. 허용되지 않으면 대안: (a) 폴더 안 파일을 Picker 다중 선택으로 허용(새 파일 자동 포함 불가), (b) `drive.readonly`(전체 읽기, Google 검증 필요 restricted scope)로 앱이 폴더 범위만 사용 — 요구사항 "광범위 Drive 권한 금지"와 충돌하므로 사용자 승인 필요.
 2. **OneDrive 최소 권한**: 개인 Microsoft 계정에서 선택 항목 한정 권한이 가능한지(File Picker v8 / `Files.Read` 위임 범위). 선택 항목 한정이 불가능하면 `Files.Read`(사용자 전체 파일 읽기)를 쓰되 앱은 선택 대상만 접근하는 방식이 되며, 이 역시 사용자 승인 후 적용.
-3. 업로드 한도·형식: 기존 `MAX_SOURCE_FILE_BYTES` 적용, 압축 파일(zip) 첨부는 v1.0에서 지원하지 않고 명시적으로 거부.
+3. 업로드 한도·형식: 기존 `MAX_SOURCE_FILE_BYTES` 적용. ~~압축 파일(zip) 첨부는 v1.0에서 지원하지 않고 명시적으로 거부.~~ → 아래 "첨부 업로드 결정"으로 대체.
+
+## 첨부 업로드 결정 (2026-11-02, 사용자 요청으로 구현)
+
+- 홈 요청 입력란에서 **+ 버튼(파일 선택), 끌어다 놓기, Ctrl+V 붙여넣기**로 PC 파일을 첨부한다. 허용 확장자: xlsx·xlsm·xls·pptx·ppt·pdf·csv·tsv·png·jpg·jpeg·webp·**zip**.
+- **zip 허용**(위 3번 대체): 업로드 시 서버가 풀어 분석 가능한 항목 하나하나를 별도 보관 원본(`uploaded_originals`, `archive_name`에 zip 이름, `display_name`에 zip 내부 경로)으로 저장한다. 지원하지 않는 형식·중첩 압축·운영체제 부가 파일(`__MACOSX/`, `.DS_Store` 등)·빈 파일·확장자와 내용 불일치·파일당 한도 초과 항목은 조용히 빼지 않고 `skipped[]`(사유)로 응답·화면에 표시한다. 암호/손상 zip, 항목 2,000개 초과, 푼 총량 `MAX_RUN_SOURCE_BYTES` 초과, 분석 가능 파일 10개 초과, 분석 가능 파일 0개는 zip 전체를 오류로 거부한다(일부만 저장하지 않음). 크기는 선언값이 아니라 실제로 푼 바이트로 세고 한도를 넘는 즉시 중단한다. 비 UTF-8 이름은 CP949로 해석한다.
+- 한 요청의 첨부 파일 수는 계획 원본 한도와 같은 10개(zip은 푼 파일 수 기준).
+- 단일 파일도 확장자와 내용 서명(PK/CFB/%PDF/PNG/JPEG/RIFF-WEBP, CSV·TSV는 NUL 없음)이 맞아야 저장한다.
+- 붙여넣기: 클립보드에 파일만 있으면(탐색기에서 복사한 파일, 스크린샷) 첨부한다. 텍스트가 함께 있으면(엑셀 셀 복사는 셀 그림도 함께 담김) 평소처럼 텍스트만 붙여넣는다. 이름 없는 스크린샷은 `붙여넣은 이미지 YYYYMMDD-HHMMSS.png`.
+- 첨부는 고르는 즉시 업로드하고(진행률 표시), "계획 만들기"는 업로드 완료 후 `upload_ids`와 함께 초안을 만든다. 첨부가 있으면 그 파일들이 순서대로 계획 원본이 되고 Drive 파일 매칭 질문은 하지 않는다.
+- 전송 전 첨부를 빼면 저장된 원본도 삭제한다. 삭제는 보관되지 않은 업무가 그 원본을 쓰는 동안 거부한다(업무 이름 표시).
+- 데이터: 이번 단계는 `source_targets`/schema_version 2 대신 기존 TaskPlan v1의 `sources[]`를 `{grant_id,…}` | `{upload_id,…}` 합집합으로 넓히고, `task_sources.grant_id`를 nullable로 바꿔 `upload_id`와 정확히 하나만 갖게 했다(기존 계획 변환 불필요). provider 추상화(2.1/2.2)는 OneDrive·폴더 작업 때 진행한다.
+- 업로드 API는 multipart가 아니라 파일당 raw body(`application/octet-stream`, 이름은 `x-file-name` URI 인코딩) 한 번. web의 `BODY_SIZE_LIMIT`을 `MAX_SOURCE_FILE_BYTES`로 올리고, JSON API 본문은 앱에서 2MB로 따로 제한한다.
