@@ -27,7 +27,7 @@
 
 ## 첨부 업로드 결정 (2026-11-02, 사용자 요청으로 구현)
 
-- 홈 요청 입력란에서 **+ 버튼(파일 선택), 끌어다 놓기, Ctrl+V 붙여넣기**로 PC 파일을 첨부한다. 허용 확장자: xlsx·xlsm·xls·pptx·ppt·pdf·csv·tsv·png·jpg·jpeg·webp·**zip**.
+- 홈 요청 입력란에서 **+ 버튼(파일 선택), 끌어다 놓기, Ctrl+V 붙여넣기**로 PC 파일을 첨부한다. 허용 확장자: xlsx·xlsm·xls·pptx·ppt·docx·docm·doc·hwpx·hwp·pdf·csv·tsv·png·jpg·jpeg·webp·**zip**.
 - **zip 허용**(위 3번 대체): 업로드 시 서버가 풀어 분석 가능한 항목 하나하나를 별도 보관 원본(`uploaded_originals`, `archive_name`에 zip 이름, `display_name`에 zip 내부 경로)으로 저장한다. 지원하지 않는 형식·중첩 압축·운영체제 부가 파일(`__MACOSX/`, `.DS_Store` 등)·빈 파일·확장자와 내용 불일치·파일당 한도 초과 항목은 조용히 빼지 않고 `skipped[]`(사유)로 응답·화면에 표시한다. 암호/손상 zip, 항목 2,000개 초과, 푼 총량 `MAX_RUN_SOURCE_BYTES` 초과, 분석 가능 파일 10개 초과, 분석 가능 파일 0개는 zip 전체를 오류로 거부한다(일부만 저장하지 않음). 크기는 선언값이 아니라 실제로 푼 바이트로 세고 한도를 넘는 즉시 중단한다. 비 UTF-8 이름은 CP949로 해석한다.
 - 한 요청의 첨부 파일 수는 계획 원본 한도와 같은 10개(zip은 푼 파일 수 기준).
 - 단일 파일도 확장자와 내용 서명(PK/CFB/%PDF/PNG/JPEG/RIFF-WEBP, CSV·TSV는 NUL 없음)이 맞아야 저장한다.

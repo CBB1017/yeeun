@@ -4,6 +4,7 @@ import iconv from 'iconv-lite';
 import { acceptSingle, cleanDisplayName, cleanEntryPath, contentMatches, decodeZipName, unpackZip } from './inspect';
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+const HWP3 = Buffer.concat([Buffer.from('HWP Document File V3.00 ', 'latin1'), Buffer.from([0x1a, 1, 2, 3, 4, 5]), Buffer.alloc(16)]);
 const PDF = Buffer.from('%PDF-1.7\n1 0 obj\n');
 const CSV = Buffer.from('이름,마감일\n과제,2026-11-30\n');
 
@@ -50,12 +51,16 @@ describe('extension and content agreement', () => {
 		expect(contentMatches('xlsx', PDF)).toBe(false);
 		expect(contentMatches('csv', PNG)).toBe(false); // binary renamed to .csv
 		expect(contentMatches('jpg', PNG)).toBe(false);
+		expect(contentMatches('docx', await xlsxLike())).toBe(true);
+		expect(contentMatches('hwp', HWP3)).toBe(true);
+		expect(contentMatches('hwpx', PDF)).toBe(false);
+		expect(contentMatches('doc', CSV)).toBe(false);
 	});
 
 	it('acceptSingle: type, emptiness, size and signature checks', () => {
 		expect(acceptSingle('a.csv', CSV, 1000).mime).toBe('text/csv');
 		expect(acceptSingle('사진.JPG', Buffer.from([0xff, 0xd8, 0xff, 0xe0]), 1000).mime).toBe('image/jpeg');
-		expect(() => acceptSingle('a.docx', CSV, 1000)).toThrow(/첨부할 수 없는 형식/);
+		expect(() => acceptSingle('a.txt', CSV, 1000)).toThrow(/첨부할 수 없는 형식/);
 		expect(() => acceptSingle('a.exe', CSV, 1000)).toThrow(/첨부할 수 없는 형식/);
 		expect(() => acceptSingle('a.csv', Buffer.alloc(0), 1000)).toThrow(/빈 파일/);
 		expect(() => acceptSingle('a.csv', CSV, 10)).toThrow(/크기 한도/);
@@ -68,7 +73,7 @@ describe('ZIP unpacking', () => {
 		const zip = await zipOf({
 			'자료/매출.xlsx': await xlsxLike(),
 			'자료/요약.pdf': PDF,
-			'메모.docx': 'not supported',
+			'메모.txt': 'not supported',
 			'안쪽.zip': await zipOf({ 'x.csv': CSV }),
 			'__MACOSX/자료/._매출.xlsx': 'apple',
 			'.DS_Store': 'x',
@@ -80,7 +85,7 @@ describe('ZIP unpacking', () => {
 		expect(r.files.map((f) => f.name)).toEqual(['자료/매출.xlsx', '자료/요약.pdf']);
 		expect(r.files.every((f) => f.archiveName === '업무자료.zip')).toBe(true);
 		expect(Object.fromEntries(r.skipped.map((s) => [s.name, s.reason]))).toEqual({
-			'메모.docx': 'unsupported',
+			'메모.txt': 'unsupported',
 			'안쪽.zip': 'nested_archive',
 			'__MACOSX/자료/._매출.xlsx': 'system_file',
 			'.DS_Store': 'system_file',
@@ -111,7 +116,7 @@ describe('ZIP unpacking', () => {
 	});
 
 	it('refuses an archive with nothing to analyse, corrupt data and non-ZIP bytes', async () => {
-		await expect(unpackZip('docs.zip', await zipOf({ 'a.docx': 'x', 'b.hwp': 'y' }), LIMITS)).rejects.toThrow(/분석할 수 있는 파일이 없습니다/);
+		await expect(unpackZip('docs.zip', await zipOf({ 'a.txt': 'x', 'b.key': 'y' }), LIMITS)).rejects.toThrow(/분석할 수 있는 파일이 없습니다/);
 		const good = await zipOf({ 'a.csv': CSV });
 		const corrupt = Buffer.concat([good.subarray(0, 30), Buffer.alloc(20, 0xff), good.subarray(50)]);
 		await expect(unpackZip('c.zip', corrupt, LIMITS)).rejects.toThrow(/zip/);

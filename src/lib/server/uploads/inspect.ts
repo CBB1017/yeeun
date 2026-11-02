@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import iconv from 'iconv-lite';
 import { AppError } from '../errors';
+import { HWP3_SIGNATURE } from '../parsers/hwp';
 import { ANALYSABLE_EXTENSIONS, UPLOAD_EXTENSIONS, UPLOAD_MIME, extensionOf, type SkippedEntry } from '../../shared/uploads';
 
 /**
@@ -61,16 +62,28 @@ const PK = Buffer.from([0x50, 0x4b]);
 const CFB = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
 
 /** Does the content look like the extension claims? Text formats only need to be free of NUL bytes. */
+function isZip(b: Buffer): boolean {
+	return b.length >= 4 && b.subarray(0, 2).equals(PK) && [0x0304, 0x0506, 0x0708].includes(b.readUInt16BE(2));
+}
+
 export function contentMatches(ext: string, b: Buffer): boolean {
 	switch (ext) {
 		case 'xlsx':
 		case 'xlsm':
 		case 'pptx':
 		case 'zip':
-			return b.length >= 4 && b.subarray(0, 2).equals(PK) && [0x0304, 0x0506, 0x0708].includes(b.readUInt16BE(2));
+			return isZip(b);
 		case 'xls':
 		case 'ppt':
 			return b.subarray(0, 8).equals(CFB);
+		// Word and Hangul: the parser decides by container (a .doc saved as OOXML is still a Word file).
+		case 'docx':
+		case 'docm':
+		case 'doc':
+			return isZip(b) || b.subarray(0, 8).equals(CFB);
+		case 'hwpx':
+		case 'hwp':
+			return isZip(b) || b.subarray(0, 8).equals(CFB) || b.subarray(0, HWP3_SIGNATURE.length).equals(HWP3_SIGNATURE);
 		case 'pdf':
 			return b.subarray(0, 1024).includes('%PDF-');
 		case 'png':

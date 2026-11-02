@@ -305,7 +305,7 @@
 							onchange={onPick}
 							data-testid="attach-input"
 						/>
-						<p id="attach-help" class="hint min-w-0">끌어다 놓거나 Ctrl+V로 붙여 넣어도 됩니다 · 엑셀·PPT·PDF·CSV·이미지·zip, 최대 {attachments.limits.maxAttachments}개</p>
+						<p id="attach-help" class="hint min-w-0">끌어다 놓거나 Ctrl+V로 붙여 넣어도 됩니다 · 엑셀·PPT·워드·한글·PDF·CSV·이미지·zip, 최대 {attachments.limits.maxAttachments}개</p>
 					</div>
 					<Button type="submit" variant="primary" disabled={busy || attachments.uploading} aria-busy={busy} data-testid="prompt-submit">
 						{busy ? '해석 중…' : attachments.uploading ? '업로드 중…' : '계획 만들기'}

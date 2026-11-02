@@ -10,7 +10,7 @@ const PNG = Buffer.from(
 async function sampleZip(): Promise<Buffer> {
 	const z = new JSZip();
 	z.file('2026/마감 목록.csv', CSV);
-	z.file('2026/메모.docx', 'not supported');
+	z.file('2026/메모.txt', 'not supported');
 	return z.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
@@ -49,9 +49,9 @@ test.describe('attach files from the PC on home', () => {
 		await expect(admin.getByRole('button', { name: 'PC에서 파일 첨부' })).toBeVisible();
 		await admin.getByTestId('attach-input').setInputFiles([
 			{ name: '연구 마감.csv', mimeType: 'text/csv', buffer: CSV },
-			{ name: '보고서.docx', mimeType: 'application/octet-stream', buffer: Buffer.from('x') }
+			{ name: '보고서.txt', mimeType: 'application/octet-stream', buffer: Buffer.from('x') }
 		]);
-		await expect(admin.getByTestId('attach-errors')).toContainText('"보고서.docx": 첨부할 수 없는 형식');
+		await expect(admin.getByTestId('attach-errors')).toContainText('"보고서.txt": 첨부할 수 없는 형식');
 		const chip = admin.getByTestId('attachment');
 		await expect(chip).toHaveCount(1);
 		await expect(chip).toHaveAttribute('data-status', 'done');
@@ -81,7 +81,7 @@ test.describe('attach files from the PC on home', () => {
 		await expect(chip).toHaveAttribute('data-status', 'done');
 		await expect(chip).toContainText('압축을 풀어 파일 1개 첨부 · 1개 제외');
 		await expect(admin.getByTestId('zip-contents')).toContainText('2026/마감 목록.csv');
-		await expect(admin.getByTestId('zip-contents')).toContainText('제외: 2026/메모.docx — 지원하지 않는 형식');
+		await expect(admin.getByTestId('zip-contents')).toContainText('제외: 2026/메모.txt — 지원하지 않는 형식');
 		await shot(admin, 'home-attachments-zip');
 		await axe(admin);
 
