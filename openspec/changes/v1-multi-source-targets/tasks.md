@@ -24,7 +24,12 @@
 - [x] 5.1 Request drive.readonly alongside drive.file; name/type search of the user's Drive returning candidates only; confirmed candidate becomes a grant; reconnect message when readonly was declined. Integration tests with mocked Drive API (3), E2E 19 passed after UI change.
 - [ ] 5.2 Live check after the operator publishes the OAuth app and the user reconnects Drive.
 
-## 6. Verification
+## 6. Word and Hangul inputs
 
-- [ ] 6.1 Unit/integration tests per provider (mock) plus live smoke with the operator's Google and Microsoft accounts; record live vs mock.
-- [ ] 6.2 E2E for attach → plan → run, folder target with added file between runs, skipped-file display; update docs and OpenSpec strict validation.
+- [x] 6.1 docx/docm (XML only, no macros), doc (isolated LibreOffice), hwpx (OWPML), hwp 5.x (cfb + own record parser; password/distribution/DRM → PARSE_FAILED), hwp 3.x via LibreOffice; tables follow the derivable evidence-id convention; empty paragraphs dropped and short ones merged for prompt size. Parser suite 76 passed / 4 skipped; two real Hancom files (hwp 5.1 contract, hwpx rules) parsed correctly in a one-off check (not stored in the repo).
+- [ ] 6.2 Run one real Word and one real Hangul file through a full live dual-CLI run from Drive.
+
+## 7. Verification
+
+- [ ] 7.1 Unit/integration tests per provider (mock) plus live smoke with the operator's Google and Microsoft accounts; record live vs mock.
+- [ ] 7.2 E2E for attach → plan → run, folder target with added file between runs, skipped-file display; update docs and OpenSpec strict validation.

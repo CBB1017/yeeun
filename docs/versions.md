@@ -40,7 +40,7 @@ apt 패키지는 bookworm 저장소의 보안 업데이트로 재빌드 시 바�
 | UI | tailwindcss 4.3.3, @tailwindcss/vite 4.3.3, bits-ui 2.20.3 (shadcn-svelte 기반 primitive), @lucide/svelte 1.66.0, tailwind-variants 4.0.1, tailwind-merge 3.7.0, clsx 2.1.1, tw-animate-css 1.4.0, @internationalized/date 3.12.4 |
 | 데이터 | drizzle-orm 0.45.4, drizzle-kit 0.31.11, pg 8.23.1, pg-boss 12.38.0, zod 4.6.7 |
 | 인증/연동 | openid-client 6.8.8, nodemailer 10.3.1, web-push 3.6.7 |
-| 파일 | exceljs 4.4.0, pptxgenjs 4.0.1, pdfjs-dist 6.5.438, jszip 3.10.2, fast-xml-parser 5.11.2, csv-parse 7.0.3, iconv-lite 0.7.3, sharp 0.35.5 (libvips 8.18.7) |
+| 파일 | cfb 1.2.2 (HWP 5 컨테이너, Apache-2.0; hwp 5.0 정식 npm 파서가 없어 본문 레코드 해석은 자체 구현), exceljs 4.4.0, pptxgenjs 4.0.1, pdfjs-dist 6.5.438, jszip 3.10.2, fast-xml-parser 5.11.2, csv-parse 7.0.3, iconv-lite 0.7.3, sharp 0.35.5 (libvips 8.18.7) |
 | 기타 | luxon 3.7.2, @opentelemetry/api 1.10.0 |
 | 개발/검증 | typescript 6.0.3, svelte-check 4.7.8, vitest 5.0.5, @playwright/test 1.64.1, @axe-core/playwright 4.14.0, esbuild 0.28.2, tsx 4.23.15, prettier 3.9.10, prettier-plugin-svelte 4.1.1, @types/* (node 26.6.6, pg 8.23.1, luxon 3.7.6, nodemailer 8.0.2, web-push 3.6.4) |
 
