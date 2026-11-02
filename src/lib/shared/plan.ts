@@ -67,13 +67,30 @@ export const SourceSelectorSchema = z.strictObject({
 });
 export type SourceSelector = z.infer<typeof SourceSelectorSchema>;
 
-export const PlanSourceSchema = z.strictObject({
+/** A Google Drive file the user explicitly allowed (file grant). */
+export const DriveSourceSchema = z.strictObject({
 	grant_id: z.uuid(),
 	provider_file_id: z.string().min(1),
 	name: z.string(),
 	mime_type: z.string(),
 	selector: SourceSelectorSchema
 });
+
+/** A file the user attached from their PC, kept as a retained original. */
+export const UploadSourceSchema = z.strictObject({
+	upload_id: z.uuid(),
+	name: z.string(),
+	mime_type: z.string(),
+	selector: SourceSelectorSchema
+});
+
+export const PlanSourceSchema = z.union([DriveSourceSchema, UploadSourceSchema]);
+export type PlanSource = z.infer<typeof PlanSourceSchema>;
+
+/** Stable identity of a plan source (grant or upload id). */
+export function sourceKey(s: PlanSource): string {
+	return 'upload_id' in s ? `upload:${s.upload_id}` : `grant:${s.grant_id}`;
+}
 
 export const ScheduleRuleSchema = z.discriminatedUnion('kind', [
 	z.strictObject({

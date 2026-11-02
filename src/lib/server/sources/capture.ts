@@ -9,11 +9,13 @@ import { accessTokenFor, download, exportAs, getMeta, md5Hex, type DriveMeta } f
 import { parseSource, EXTRACTION_VERSION, GOOGLE_EXPORTS } from '../parsers';
 import { SourceManifestSchema, type ManifestFile, type SourceManifest } from '../../shared/manifest';
 import type { TaskPlan } from '../../shared/plan';
+import { readOriginal } from '../uploads/service';
 
 /**
- * Freeze source bytes for a run. Each selected file is read by its bound
+ * Freeze source bytes for a run. Each selected Drive file is read by its bound
  * Drive file id (never re-discovered), checked for changes during capture,
- * hashed, stored under the run's snapshots area and parsed once. Both CLI
+ * and each attached upload is read from its retained original (sha256-checked);
+ * both are hashed, stored under the run's snapshots area and parsed once. Both CLI
  * executions (and a round-2 review) receive this same manifest.
  */
 
@@ -56,6 +58,61 @@ export async function captureSources(run: {
 	const ocrBudget = { used: 0 };
 	let total = 0;
 	for (const [index, src] of plan.sources.entries()) {
+		if ('upload_id' in src) {
+			// Attached from the user's PC: the retained original is the source (never re-uploaded or replaced).
+			const { row, bytes } = await readOriginal(run.ownerId, src.upload_id);
+			if (bytes.length > cfg.maxSourceFileBytes) throw new AppError('SOURCE_TOO_LARGE', `"${row.displayName}" 크기 한도 초과`, 'preparing');
+			total += bytes.length;
+			if (total > cfg.maxRunSourceBytes) throw new AppError('SOURCE_TOO_LARGE', '실행당 원본 크기 한도 초과', 'preparing');
+			const capturedAt = new Date();
+			const written = await writeFileAtomic(root, runRelativeDir(run.ownerId, run.id, 'snapshots'), generatedName(row.extension), bytes);
+			const [snap] = await db()
+				.insert(schema.sourceSnapshots)
+				.values({
+					runId: run.id,
+					ownerId: run.ownerId,
+					uploadId: row.id,
+					providerFileId: row.id,
+					name: row.displayName,
+					mimeType: row.mimeType,
+					providerRevision: null,
+					providerModifiedAt: row.createdAt,
+					capturedAt,
+					sha256: written.sha256,
+					sizeBytes: written.sizeBytes,
+					exportFormat: null,
+					storageRootId: root.id,
+					relativePath: written.relativePath,
+					extractionVersion: EXTRACTION_VERSION
+				})
+				.returning();
+			const parsed = await parseSource({
+				bytes,
+				mimeType: row.mimeType,
+				name: row.displayName,
+				fileIndex: index,
+				selector: src.selector,
+				maxOcrPages: cfg.maxOcrPages,
+				ocrBudget
+			});
+			files.push({
+				index,
+				snapshot_id: snap!.id,
+				provider_file_id: row.id,
+				name: row.displayName,
+				mime_type: row.mimeType,
+				provider_revision: null,
+				provider_modified_at: row.createdAt.toISOString(),
+				captured_at: capturedAt.toISOString(),
+				sha256: written.sha256,
+				export_format: null,
+				extraction_version: EXTRACTION_VERSION,
+				tables: parsed.tables,
+				texts: parsed.texts,
+				warnings: parsed.warnings
+			});
+			continue;
+		}
 		// The grant must still be active and owned by this user.
 		const [grant] = await db()
 			.select()

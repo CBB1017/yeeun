@@ -16,6 +16,13 @@ export interface GrantCandidate {
 	folderLabel: string | null;
 }
 
+/** A file the user attached to this request from their PC. */
+export interface UploadCandidate {
+	id: string;
+	displayName: string;
+	mimeType: string;
+}
+
 const WEEKDAY: Record<string, number> = { 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6, 일: 7 };
 const EN_WEEKDAY: Record<string, number> = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
 
@@ -108,7 +115,7 @@ export function matchFiles(prompt: string, grants: GrantCandidate[]): GrantCandi
 	return scored.filter((x) => x.score === best).map((x) => x.g);
 }
 
-export function interpret(prompt: string, grants: GrantCandidate[], browserTimezone: string): TaskPlan {
+export function interpret(prompt: string, grants: GrantCandidate[], browserTimezone: string, uploads: UploadCandidate[] = []): TaskPlan {
 	const text = prompt.trim();
 	const plan = emptyPlan(text, browserTimezone);
 	const q: PlanQuestion[] = [];
@@ -118,9 +125,14 @@ export function interpret(prompt: string, grants: GrantCandidate[], browserTimez
 	if (/메일|이메일|email/i.test(text)) plan.notifications.email = true;
 	if (/푸시|push|브라우저\s*알림/i.test(text)) plan.notifications.push = true;
 
-	// Files: only among the user's explicitly allowed files.
-	const matches = matchFiles(text, grants);
-	if (matches.length === 1) {
+	// Files attached to this request are the sources, in the order attached.
+	// Otherwise: only among the user's explicitly allowed Drive files.
+	const matches = uploads.length ? [] : matchFiles(text, grants);
+	if (uploads.length) {
+		for (const u of uploads) {
+			plan.sources.push({ upload_id: u.id, name: u.displayName, mime_type: u.mimeType, selector: defaultSelector() });
+		}
+	} else if (matches.length === 1) {
 		const g = matches[0]!;
 		plan.sources.push({
 			grant_id: g.id,

@@ -1,7 +1,9 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db, schema } from '../db';
 import { AppError } from '../errors';
-import { TaskPlanSchema, type TaskPlan } from '../../shared/plan';
+import { TaskPlanSchema, sourceKey, type TaskPlan } from '../../shared/plan';
+import { MAX_ATTACHMENTS } from '../../shared/uploads';
+import { ownedActiveUploads } from '../uploads/service';
 import { interpret, remainingQuestions } from '../plan/interpret';
 import { isValidZone, nextOccurrence, nextOccurrences } from '../schedule/rules';
 
@@ -15,10 +17,12 @@ export async function activeGrants(ownerId: string) {
 		.orderBy(desc(schema.fileGrants.createdAt));
 }
 
-export async function createDraft(ownerId: string, prompt: string, timezone: string) {
+export async function createDraft(ownerId: string, prompt: string, timezone: string, uploadIds: string[] = []) {
 	if (!isValidZone(timezone)) throw new AppError('VALIDATION_FAILED', '알 수 없는 시간대');
+	if (uploadIds.length > MAX_ATTACHMENTS) throw new AppError('VALIDATION_FAILED', `첨부 파일은 최대 ${MAX_ATTACHMENTS}개까지 사용할 수 있습니다`);
+	const uploads = await ownedActiveUploads(ownerId, uploadIds);
 	const grants = await activeGrants(ownerId);
-	const plan = interpret(prompt, grants, timezone);
+	const plan = interpret(prompt, grants, timezone, uploads);
 	const [d] = await db()
 		.insert(schema.taskDrafts)
 		.values({ ownerId, originalPrompt: prompt, plan, status: plan.unresolved_questions.length ? 'needs_input' : 'ready' })
@@ -37,20 +41,31 @@ export async function getDraft(ownerId: string, id: string) {
 	return d;
 }
 
-/** Server-side validation of an edited plan: sources must be the user's active grants. */
+/** Server-side validation of an edited plan: sources must be the user's active grants or uploads. */
 async function validatePlan(ownerId: string, plan: TaskPlan) {
-	const ids = plan.sources.map((s) => s.grant_id);
+	const keys = plan.sources.map(sourceKey);
+	if (new Set(keys).size !== keys.length) throw new AppError('VALIDATION_FAILED', '같은 파일이 두 번 선택됨');
+	const ids = plan.sources.flatMap((s) => ('grant_id' in s ? [s.grant_id] : []));
 	if (ids.length) {
 		const grants = await db()
 			.select()
 			.from(schema.fileGrants)
 			.where(and(eq(schema.fileGrants.ownerId, ownerId), eq(schema.fileGrants.status, 'active'), inArray(schema.fileGrants.id, ids)));
 		for (const s of plan.sources) {
+			if (!('grant_id' in s)) continue;
 			const g = grants.find((x) => x.id === s.grant_id);
 			if (!g || g.providerFileId !== s.provider_file_id) throw new AppError('VALIDATION_FAILED', '허용되지 않은 파일이 포함됨');
 			s.name = g.name;
 			s.mime_type = g.mimeType;
 		}
+	}
+	const uploadIds = plan.sources.flatMap((s) => ('upload_id' in s ? [s.upload_id] : []));
+	const uploads = await ownedActiveUploads(ownerId, uploadIds);
+	for (const s of plan.sources) {
+		if (!('upload_id' in s)) continue;
+		const u = uploads.find((x) => x.id === s.upload_id)!;
+		s.name = u.displayName;
+		s.mime_type = u.mimeType;
 	}
 	if (plan.schedule.mode === 'recurring' && !isValidZone(plan.schedule.timezone))
 		throw new AppError('VALIDATION_FAILED', '알 수 없는 시간대');
@@ -103,6 +118,11 @@ export async function confirmDraft(ownerId: string, id: string, revision: number
 		if (d.status === 'confirmed' && d.confirmedTaskId) return { taskId: d.confirmedTaskId, duplicate: true };
 		if (d.revision !== revision) throw new AppError('CONFLICT', '확인한 계획 버전이 최신이 아님');
 		const plan = TaskPlanSchema.parse(d.plan);
+		// Attached originals must still exist (the user may have deleted one after drafting).
+		await ownedActiveUploads(
+			ownerId,
+			plan.sources.flatMap((s) => ('upload_id' in s ? [s.upload_id] : []))
+		);
 		if (d.status !== 'ready' || plan.unresolved_questions.length) throw new AppError('INPUT_REQUIRED', '남은 질문을 먼저 해결하세요');
 		if (plan.limitations.some((l) => l.startsWith('UNSUPPORTED:')))
 			throw new AppError('INPUT_REQUIRED', '지원하지 않는 작업이 포함되어 활성화할 수 없음');
@@ -114,7 +134,11 @@ export async function confirmDraft(ownerId: string, id: string, revision: number
 		for (const [i, s] of plan.sources.entries()) {
 			await tx
 				.insert(schema.taskSources)
-				.values({ taskId: task!.id, ownerId, grantId: s.grant_id, providerFileId: s.provider_file_id, selector: s.selector, position: i });
+				.values(
+					'upload_id' in s
+						? { taskId: task!.id, ownerId, uploadId: s.upload_id, providerFileId: s.upload_id, selector: s.selector, position: i }
+						: { taskId: task!.id, ownerId, grantId: s.grant_id, providerFileId: s.provider_file_id, selector: s.selector, position: i }
+				);
 		}
 		if (plan.schedule.mode === 'recurring') {
 			await tx.insert(schema.schedules).values({
