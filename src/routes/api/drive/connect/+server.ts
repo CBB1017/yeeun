@@ -13,5 +13,5 @@ export const GET: RequestHandler = async ({ locals, cookies }) => {
 		secure: config().publicOrigin.startsWith('https://'),
 		maxAge: 600
 	});
-	redirect(303, url);
+	redirect(303, url, { external: ['https://accounts.google.com'] });
 };
