@@ -1,0 +1,13 @@
+.git
+.secrets
+file
+node_modules
+.svelte-kit
+build
+dist
+backups
+test-results
+playwright-report
+*.log
+.env
+.env.*

@@ -1,0 +1,278 @@
+name: yeeun
+
+# Default start: docker compose up -d --build --wait
+# Secrets live in ./.secrets (create with scripts/init-secrets.sh or .ps1); never committed.
+
+x-app-env: &app-env
+  NODE_ENV: production
+  POSTGRES_HOST: db
+  POSTGRES_USER: yeeun
+  POSTGRES_DB: yeeun
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  APP_MASTER_KEY_FILE: /run/secrets/app_master_key
+  SESSION_SECRET_FILE: /run/secrets/session_secret
+  RUNNER_TOKEN_FILE: /run/secrets/runner_token
+  GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+  GOOGLE_PICKER_API_KEY_FILE: /run/secrets/google_picker_api_key
+  SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+  VAPID_PRIVATE_KEY_FILE: /run/secrets/vapid_private_key
+  PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+  BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_PICKER_APP_ID: ${GOOGLE_PICKER_APP_ID:-}
+  FILE_STORAGE_ROOT: /data
+  FILE_STORAGE_HOST_LABEL: ${FILE_STORAGE_HOST_PATH:-./file}
+  TASK_CONCURRENCY: ${TASK_CONCURRENCY:-1}
+  CLI_STAGE_TIMEOUT_SECONDS: ${CLI_STAGE_TIMEOUT_SECONDS:-1800}
+  TASK_TIMEOUT_SECONDS: ${TASK_TIMEOUT_SECONDS:-5400}
+  WORKER_HEARTBEAT_SECONDS: ${WORKER_HEARTBEAT_SECONDS:-15}
+  WORKER_LEASE_SECONDS: ${WORKER_LEASE_SECONDS:-60}
+  MAX_SOURCE_FILE_BYTES: ${MAX_SOURCE_FILE_BYTES:-104857600}
+  MAX_RUN_SOURCE_BYTES: ${MAX_RUN_SOURCE_BYTES:-524288000}
+  MAX_OCR_PAGES: ${MAX_OCR_PAGES:-300}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-}
+  SMTP_SECURE: ${SMTP_SECURE:-true}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+  CLI_RUNNER_URL: http://cli-runner:4100
+  TZ: UTC
+
+x-app-secrets: &app-secrets
+  - postgres_password
+  - app_master_key
+  - session_secret
+  - runner_token
+  - google_client_secret
+  - google_picker_api_key
+  - smtp_password
+  - vapid_private_key
+
+x-hardening: &hardening
+  init: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+services:
+  db:
+    image: postgres:18.6@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: yeeun
+      POSTGRES_DB: yeeun
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks: [backend]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  migrate:
+    <<: *hardening
+    build: { context: ., target: migrate }
+    image: yeeun-migrate:local
+    restart: "no"
+    environment: *app-env
+    secrets: *app-secrets
+    volumes:
+      - type: bind
+        source: ${FILE_STORAGE_HOST_PATH:-./file}
+        target: /data
+    networks: [backend]
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    <<: *hardening
+    build: { context: ., target: web }
+    image: yeeun-web:local
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      <<: *app-env
+      ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      PORT: "3000"
+      HOST: 0.0.0.0
+      SHUTDOWN_TIMEOUT: "20"
+      BODY_SIZE_LIMIT: 2M
+    secrets: *app-secrets
+    volumes:
+      - type: bind
+        source: ${FILE_STORAGE_HOST_PATH:-./file}
+        target: /data
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    networks: [backend, frontend]
+    stop_grace_period: 25s
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *hardening
+    build: { context: ., target: worker }
+    image: yeeun-worker:local
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:uid=1000,gid=1000,mode=0700
+      - /home/node:uid=1000,gid=1000,mode=0700
+    environment: *app-env
+    secrets: *app-secrets
+    volumes:
+      - type: bind
+        source: ${FILE_STORAGE_HOST_PATH:-./file}
+        target: /data
+    networks: [backend, egress, runner]
+    stop_grace_period: 30s
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      cli-runner: { condition: service_healthy }
+
+  # Owner subscription CLIs. No /data, no DB network, no Docker socket.
+  cli-runner:
+    <<: *hardening
+    build: { context: ., target: cli-runner }
+    image: yeeun-cli-runner:local
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:uid=1000,gid=1000,mode=0700
+      - /home/node:uid=1000,gid=1000,mode=0700
+      - /runner/work:uid=1000,gid=1000,mode=0700
+    environment:
+      RUNNER_TOKEN_FILE: /run/secrets/runner_token
+      TZ: UTC
+    secrets: [runner_token]
+    volumes:
+      - cli-auth-claude:/cli-auth/claude
+      - cli-auth-codex:/cli-auth/codex
+    networks: [runner]
+    stop_grace_period: 15s
+
+  tools:
+    profiles: [tools]
+    image: node:26.13.0-bookworm-slim@sha256:bc0a2afd3b74ce12222fc8bab99271e66257f021078f5f4a5d687a77d280c1d9
+    working_dir: /workspace
+    init: true
+    command: [node, --version]
+    environment:
+      FILE_STORAGE_ROOT: /data
+      OPENSPEC_TELEMETRY: "0"
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+      - type: bind
+        source: ${FILE_STORAGE_HOST_PATH:-./file}
+        target: /data
+      - node-modules:/workspace/node_modules
+      - npm-cache:/root/.npm
+
+  # Test runner with the worker toolchain (OCR/LibreOffice) and DB access.
+  test:
+    profiles: [test]
+    build: { context: ., target: worker-test }
+    image: yeeun-test:local
+    working_dir: /workspace
+    init: true
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: yeeun
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      TEST_DATABASE_NAME: yeeun_test
+      FILE_STORAGE_ROOT: /tmp/yeeun-test-data
+      RUNNER_TOKEN_FILE: /run/secrets/runner_token
+    secrets: [postgres_password, runner_token]
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+      - node-modules:/workspace/node_modules
+    # runner: only used by the opt-in LIVE_CLI=1 tests
+    networks: [backend, egress, runner]
+    depends_on:
+      db: { condition: service_healthy }
+
+  # Browser E2E (Playwright). Shares the web container's network namespace so
+  # http://localhost:3000 is the app and the Origin matches PUBLIC_ORIGIN; it also
+  # reaches `db` for the @example.test seed. Artifacts -> $E2E_ARTIFACT_DIR.
+  #   docker compose --profile e2e run --rm e2e npx playwright test
+  e2e:
+    profiles: [e2e]
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    working_dir: /workspace
+    init: true
+    ipc: host
+    network_mode: "service:web"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: yeeun
+      POSTGRES_DB: yeeun
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      FILE_STORAGE_ROOT: /data
+      E2E_BASE_URL: http://localhost:3000
+      E2E_ARTIFACT_DIR: /artifacts
+      E2E_STATE_DIR: /tmp/yeeun-e2e
+      E2E_KEEP_SEED: ${E2E_KEEP_SEED:-0}
+      CI: "1"
+    secrets: [postgres_password]
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+      - node-modules:/workspace/node_modules
+      - type: bind
+        source: ${FILE_STORAGE_HOST_PATH:-./file}
+        target: /data
+      - type: bind
+        source: ${E2E_ARTIFACT_DIR:-./test-results}
+        target: /artifacts
+    depends_on:
+      web: { condition: service_healthy }
+
+  ngrok:
+    profiles: [ngrok]
+    # ngrok 3.39.13 (verified with `ngrok version`), pinned by digest
+    image: ngrok/ngrok:3@sha256:ff3b5c3674432d14a786349908b7bdf28ee56c25662637afcbe7180d471993ef
+    restart: unless-stopped
+    command: ["http", "--url=${NGROK_DOMAIN:-}", "web:3000"]
+    environment:
+      NGROK_AUTHTOKEN_FILE: /run/secrets/ngrok_authtoken
+    secrets: [ngrok_authtoken]
+    networks: [frontend]
+    depends_on:
+      web: { condition: service_healthy }
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+  egress: {}
+  runner: {}
+
+secrets:
+  postgres_password: { file: ./.secrets/postgres_password }
+  app_master_key: { file: ./.secrets/app_master_key }
+  session_secret: { file: ./.secrets/session_secret }
+  runner_token: { file: ./.secrets/runner_token }
+  google_client_secret: { file: ./.secrets/google_client_secret }
+  google_picker_api_key: { file: ./.secrets/google_picker_api_key }
+  smtp_password: { file: ./.secrets/smtp_password }
+  vapid_private_key: { file: ./.secrets/vapid_private_key }
+  ngrok_authtoken: { file: ./.secrets/ngrok_authtoken }
+
+volumes:
+  postgres-data:
+  node-modules:
+  npm-cache:
+  cli-auth-claude:
+  cli-auth-codex:
