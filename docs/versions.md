@@ -9,6 +9,7 @@
 | node | 26.13.0-bookworm-slim | `sha256:bc0a2afd3b74ce12222fc8bab99271e66257f021078f5f4a5d687a77d280c1d9` |
 | postgres | 18.6 | `sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81` |
 | ngrok/ngrok (선택 profile) | 3.39.13 (`ngrok version`) | `sha256:ff3b5c3674432d14a786349908b7bdf28ee56c25662637afcbe7180d471993ef` |
+| cloudflare/cloudflared (cloudflare profile) | 2026.10.7 (`cloudflared --version`, 2026-11-03 확인) | `sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba` |
 | mcr.microsoft.com/playwright (e2e profile) | v1.64.1-noble | @playwright/test 1.64.1과 일치 |
 
 ## 구독 CLI (cli-runner 이미지, npm 전역 설치, 정확한 버전 고정)

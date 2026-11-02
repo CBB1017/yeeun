@@ -241,21 +241,30 @@ services:
     depends_on:
       web: { condition: service_healthy }
 
-  ngrok:
-    profiles: [ngrok]
-    # ngrok 3.39.13 (verified with `ngrok version`), pinned by digest
-    image: ngrok/ngrok:3@sha256:ff3b5c3674432d14a786349908b7bdf28ee56c25662637afcbe7180d471993ef
+  # Cloudflare Tunnel
+  # Cloudflare -> Docker frontend network -> web:3000
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    profiles: [cloudflare]
     restart: unless-stopped
-    # ngrok does not read *_FILE variables: load the token from the Docker secret at start.
-    entrypoint: ["/bin/sh", "-c"]
+
     command:
-      - 'NGROK_AUTHTOKEN="$$(cat /run/secrets/ngrok_authtoken)" exec ngrok http --log=stdout --url="$$NGROK_URL" web:3000'
-    environment:
-      NGROK_URL: ${NGROK_DOMAIN:-}
-    secrets: [ngrok_authtoken]
-    networks: [frontend]
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token-file
+      - /run/secrets/cloudflare_tunnel_token
+
+    secrets:
+      - cloudflare_tunnel_token
+
+    networks:
+      - frontend
+
     depends_on:
-      web: { condition: service_healthy }
+      web:
+        condition: service_healthy
+
 
 networks:
   backend:
@@ -273,8 +282,7 @@ secrets:
   google_picker_api_key: { file: ./.secrets/google_picker_api_key }
   smtp_password: { file: ./.secrets/smtp_password }
   vapid_private_key: { file: ./.secrets/vapid_private_key }
-  ngrok_authtoken: { file: ./.secrets/ngrok_authtoken }
-
+  cloudflare_tunnel_token: { file: ./.secrets/cloudflare_tunnel_token }
 volumes:
   postgres-data:
   node-modules:
