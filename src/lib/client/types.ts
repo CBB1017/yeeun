@@ -46,6 +46,8 @@ export interface DriveConnection {
 	email: string | null;
 	status: 'active' | 'reauth_required' | 'revoked';
 	createdAt: string;
+	/** drive.readonly granted: natural-language Drive search is available. */
+	searchEnabled?: boolean;
 }
 
 export interface Me {

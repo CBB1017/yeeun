@@ -8,6 +8,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PageHeader from '#lib/components/PageHeader.svelte';
+	import DriveSearch from '#lib/components/DriveSearch.svelte';
 	import { api, messageOf } from '#lib/client/api.ts';
 	import { announce } from '#lib/client/live.svelte.ts';
 	import { pickDriveFiles, type PickerConfig } from '#lib/client/picker.ts';
@@ -146,6 +147,15 @@
 				</div>
 				{#if !me.features.picker}
 					<p class="hint mt-2">운영자가 Google Picker를 설정하지 않아 파일을 추가할 수 없습니다.</p>
+				{/if}
+				{#if connection.status === 'active'}
+					<DriveSearch
+						idPrefix="files-drive"
+						onPick={(g) => {
+							pickMsg = { tone: 'success', text: `${g.name}을(를) 허용 목록에 추가했습니다.` };
+							void invalidate('app:files');
+						}}
+					/>
 				{/if}
 			{/if}
 			{#if pickMsg}

@@ -8,6 +8,7 @@
 	import PageHeader from '../PageHeader.svelte';
 	import StatusBadge from '../StatusBadge.svelte';
 	import PredicateEditor from './PredicateEditor.svelte';
+	import DriveSearch from '../DriveSearch.svelte';
 	import { api, messageOf, newIdempotencyKey, ApiError } from '#lib/client/api.ts';
 	import { announce } from '#lib/client/live.svelte.ts';
 	import {
@@ -257,7 +258,7 @@
 							<p class="font-semibold">{qi + 1}. {q.question}</p>
 							{#if q.key === 'source'}
 								{#if grants.length === 0}
-									<p class="mt-2">허용한 파일이 없습니다. <a href="/files">파일 허용 화면</a>에서 먼저 추가하세요.</p>
+									<p class="mt-2">아직 허용한 파일이 없습니다. 아래에서 Drive를 검색해 고르거나 <a href="/files">파일 허용 화면</a>에서 추가하세요.</p>
 								{:else}
 									<fieldset class="mt-2">
 										<legend class="sr-only">사용할 허용 파일</legend>
@@ -275,6 +276,9 @@
 											{/each}
 										</ul>
 									</fieldset>
+								{/if}
+								{#if !readOnly}
+									<DriveSearch initialQuery={draft.originalPrompt} auto={true} idPrefix="q-drive" onPick={(g) => useGrant(g, 0)} />
 								{/if}
 							{:else if q.key === 'schedule.timezone' && plan.schedule.mode === 'recurring'}
 								<fieldset class="mt-2">
@@ -319,7 +323,7 @@
 		<section class="card" aria-labelledby="src-title" id="sources">
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<h2 id="src-title" class="section-title flex items-center gap-2"><FileSpreadsheet size={20} /> 원본 파일</h2>
-				<Button size="sm" onclick={() => (pickerOpen = true)} disabled={readOnly || plan.sources.length >= 10} data-testid="open-source-picker"><Plus size={16} />허용한 파일에서 선택</Button>
+				<Button size="sm" onclick={() => (pickerOpen = true)} disabled={readOnly || plan.sources.length >= 10} data-testid="open-source-picker"><Plus size={16} />파일 선택·Drive 검색</Button>
 			</div>
 			<p class="hint mt-1">허용한 파일 중에서만 고를 수 있습니다. 실행할 때마다 같은 파일 ID의 최신 내용을 가져오며, 파일을 찾지 못하면 다른 파일로 대체하지 않고 오류로 알립니다.</p>
 			{#if plan.sources.length === 0}
@@ -688,9 +692,10 @@
 	</div>
 </div>
 
-<Modal bind:open={pickerOpen} title="허용한 파일에서 선택" description="허용 목록에 있는 파일만 표시합니다. Drive 전체를 검색하지 않습니다." variant="full" testid="source-picker">
+<Modal bind:open={pickerOpen} title="원본 파일 선택" description="허용한 파일에서 고르거나, 아래에서 Drive를 검색해 후보를 확인하고 추가하세요." variant="full" testid="source-picker">
+	<DriveSearch idPrefix="modal-drive" onPick={(g) => (useGrant(g), (pickerOpen = false))} />
 	{#if grants.length === 0}
-		<p>허용한 파일이 없습니다. <a href="/files">파일 허용 화면</a>에서 Drive 파일을 먼저 추가하세요.</p>
+		<p class="mt-3">아직 허용한 파일이 없습니다.</p>
 	{:else}
 		<label for="picker-q" class="label">허용된 파일만 검색</label>
 		<input id="picker-q" type="search" class="input" bind:value={pickerQuery} autocomplete="off" />
