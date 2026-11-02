@@ -44,6 +44,7 @@ export function databaseUrl(): string {
 export interface AppConfig {
 	publicOrigin: string;
 	bootstrapAdminEmail?: string;
+	operator: { name: string; contactEmail: string | null };
 	google: {
 		clientId?: string;
 		clientSecret?: string;
@@ -86,6 +87,7 @@ export function config(): AppConfig {
 	cached = {
 		publicOrigin: env('PUBLIC_ORIGIN', 'http://localhost:3000')!.replace(/\/$/, ''),
 		bootstrapAdminEmail: env('BOOTSTRAP_ADMIN_EMAIL')?.trim().toLowerCase(),
+		operator: { name: env('OPERATOR_NAME', 'Yeeun 운영자')!, contactEmail: env('OPERATOR_CONTACT_EMAIL') ?? null },
 		google: {
 			clientId: env('GOOGLE_CLIENT_ID'),
 			clientSecret: secret('GOOGLE_CLIENT_SECRET'),
