@@ -76,7 +76,7 @@ export async function pickerConfig(ownerId: string) {
 export async function addGrants(ownerId: string, fileIds: string[]) {
 	const { token, connectionId } = await accessTokenFor(ownerId);
 	const added = [];
-	const rejected: { id: string; reason: string }[] = [];
+	const rejected: { id: string; reason: string; message: string | null }[] = [];
 	for (const id of [...new Set(fileIds)].slice(0, 50)) {
 		try {
 			const m = await getMeta(token, id);
@@ -99,7 +99,7 @@ export async function addGrants(ownerId: string, fileIds: string[]) {
 				.returning();
 			added.push(row!);
 		} catch (e) {
-			rejected.push({ id, reason: e instanceof AppError ? e.code : 'EXECUTION_FAILED' });
+			rejected.push({ id, reason: e instanceof AppError ? e.code : 'EXECUTION_FAILED', message: e instanceof AppError ? e.message : null });
 		}
 	}
 	return { added, rejected };

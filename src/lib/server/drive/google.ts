@@ -108,6 +108,17 @@ async function driveFetch(token: string, url: string, init: RequestInit = {}): P
 	}
 	if (res.status === 401) throw new AppError('DRIVE_REAUTH_REQUIRED', 'Drive 인증 만료', 'preparing');
 	if (res.status === 403 || res.status === 404) {
+		const reason = await googleErrorReason(res);
+		console.warn(`[drive] ${res.status} ${reason ?? 'unknown'}`);
+		if (reason && /accessNotConfigured|SERVICE_DISABLED/i.test(reason)) {
+			throw new AppError('NOT_CONFIGURED', 'Google Cloud 프로젝트에서 Google Drive API가 사용 설정되지 않음 (운영자 설정)', 'preparing');
+		}
+		if (reason && /rateLimitExceeded|userRateLimitExceeded/i.test(reason)) {
+			throw new AppError('USAGE_LIMIT', 'Google Drive 사용 한도', 'preparing');
+		}
+		if (reason && /appNotAuthorizedToFile|insufficientFilePermissions|insufficientPermissions/i.test(reason)) {
+			throw new AppError('SOURCE_MISSING', '이 앱에 해당 파일 권한이 부여되지 않음 (Picker App ID가 프로젝트 번호와 같은지 확인)', 'preparing');
+		}
 		throw new AppError('SOURCE_MISSING', '허용된 파일에 접근할 수 없음 (삭제·이동 또는 권한 취소)', 'preparing');
 	}
 	if (res.status === 429) throw new AppError('USAGE_LIMIT', 'Google Drive 사용 한도', 'preparing');
@@ -172,4 +183,14 @@ export async function uploadNewFile(token: string, name: string, mimeType: strin
 
 export async function revokeToken(token: string): Promise<void> {
 	await fetchImpl(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, { method: 'POST' }).catch(() => {});
+}
+
+/** Google's machine-readable error reason (e.g. accessNotConfigured, notFound); never the body text. */
+async function googleErrorReason(res: Response): Promise<string | null> {
+	try {
+		const j = (await res.json()) as { error?: { errors?: { reason?: string }[]; status?: string; details?: { reason?: string }[] } };
+		return j.error?.errors?.[0]?.reason ?? j.error?.details?.find((d) => d.reason)?.reason ?? j.error?.status ?? null;
+	} catch {
+		return null;
+	}
 }

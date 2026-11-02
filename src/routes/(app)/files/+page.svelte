@@ -63,8 +63,8 @@
 				pickMsg = { tone: 'warning', text: '파일을 선택하지 않았습니다.' };
 				return;
 			}
-			const r = await api<{ added: Grant[]; rejected: { id: string; reason: string }[] }>('/api/drive/grants', { method: 'POST', body: { fileIds: ids } });
-			const rejected = r.rejected.length ? ` ${r.rejected.length}개는 확인하지 못해 추가하지 않았습니다 (${[...new Set(r.rejected.map((x) => errorInfo(x.reason).title))].join(', ')}).` : '';
+			const r = await api<{ added: Grant[]; rejected: { id: string; reason: string; message?: string | null }[] }>('/api/drive/grants', { method: 'POST', body: { fileIds: ids } });
+			const rejected = r.rejected.length ? ` ${r.rejected.length}개는 확인하지 못해 추가하지 않았습니다 (${[...new Set(r.rejected.map((x) => x.message ?? errorInfo(x.reason).title))].join(', ')}).` : '';
 			pickMsg = { tone: r.rejected.length ? 'warning' : 'success', text: `${r.added.length}개 파일을 허용 목록에 추가했습니다.${rejected}` };
 			announce(pickMsg.text);
 			await invalidate('app:files');
