@@ -4,7 +4,9 @@ import { SESSION_COOKIE, userForSession } from '#lib/server/auth/users.ts';
 
 const SECURITY_HEADERS: Record<string, string> = {
 	'x-content-type-options': 'nosniff',
-	'referrer-policy': 'same-origin',
+	// Cross-origin requests carry only the origin (no path/query). Google Picker needs it:
+	// an API key restricted to website referrers rejects requests with no Referer.
+	'referrer-policy': 'strict-origin-when-cross-origin',
 	'x-frame-options': 'DENY',
 	'permissions-policy': 'camera=(), microphone=(), geolocation=()',
 	'cross-origin-opener-policy': 'same-origin-allow-popups'
