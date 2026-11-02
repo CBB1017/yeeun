@@ -55,6 +55,11 @@ export const MIME = {
 	xls: 'application/vnd.ms-excel',
 	pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 	ppt: 'application/vnd.ms-powerpoint',
+	docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	docm: 'application/vnd.ms-word.document.macroEnabled.12',
+	doc: 'application/msword',
+	hwpx: 'application/hwp+zip',
+	hwp: 'application/x-hwp',
 	pdf: 'application/pdf',
 	csv: 'text/csv',
 	tsv: 'text/tab-separated-values',
@@ -73,7 +78,11 @@ export const GOOGLE_EXPORTS: Record<string, { mime: string; format: string }> = 
 	[MIME.gdoc]: { mime: MIME.pdf, format: 'pdf' }
 };
 
-export type Kind = 'xlsx' | 'xls' | 'pptx' | 'ppt' | 'pdf' | 'csv' | 'tsv' | 'image';
+export type Kind = 'xlsx' | 'xls' | 'pptx' | 'ppt' | 'docx' | 'doc' | 'hwpx' | 'hwp' | 'pdf' | 'csv' | 'tsv' | 'image';
+
+/** Other MIME types seen for Hangul files (Drive, Hancom Office, browsers). */
+const HWPX_MIMES = ['application/hwp+zip', 'application/vnd.hancom.hwpx', 'application/haansofthwpx', 'application/x-hwpx'];
+const HWP_MIMES = ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp', 'application/hwp'];
 
 export function kindOf(mimeType: string, name: string): Kind | null {
 	const ext = name.toLowerCase().split('.').pop() ?? '';
@@ -81,6 +90,10 @@ export function kindOf(mimeType: string, name: string): Kind | null {
 	if (mimeType === MIME.xls || ext === 'xls') return 'xls';
 	if (mimeType === MIME.pptx || ext === 'pptx') return 'pptx';
 	if (mimeType === MIME.ppt || ext === 'ppt') return 'ppt';
+	if (mimeType === MIME.docx || mimeType === MIME.docm || ext === 'docx' || ext === 'docm') return 'docx';
+	if (mimeType === MIME.doc || ext === 'doc') return 'doc';
+	if (HWPX_MIMES.includes(mimeType) || ext === 'hwpx') return 'hwpx';
+	if (HWP_MIMES.includes(mimeType) || ext === 'hwp') return 'hwp';
 	if (mimeType === MIME.pdf || ext === 'pdf') return 'pdf';
 	if (mimeType === MIME.tsv || ext === 'tsv') return 'tsv';
 	if (mimeType === MIME.csv || ext === 'csv') return 'csv';

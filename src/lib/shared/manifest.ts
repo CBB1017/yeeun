@@ -15,7 +15,7 @@ export type Cell = z.infer<typeof CellSchema>;
 
 export const TableSchema = z.strictObject({
 	table_id: z.string(),
-	kind: z.enum(['sheet', 'csv', 'slide_table', 'pdf_table']),
+	kind: z.enum(['sheet', 'csv', 'slide_table', 'pdf_table', 'doc_table']),
 	label: z.string(),
 	header_row: z.number().int(),
 	columns: z.array(z.strictObject({ column_id: z.string(), label: z.string(), index: z.number().int() })),
@@ -34,7 +34,7 @@ export type Table = z.infer<typeof TableSchema>;
 
 export const TextBlockSchema = z.strictObject({
 	evidence_id: z.string(),
-	kind: z.enum(['page', 'slide', 'notes', 'region', 'chart']),
+	kind: z.enum(['page', 'slide', 'notes', 'region', 'chart', 'paragraph']),
 	location: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
 	text: z.string(),
 	ocr_confidence: z.number().nullable()
@@ -69,7 +69,7 @@ export type SourceManifest = z.infer<typeof SourceManifestSchema>;
 export interface EvidenceEntry {
 	evidence_id: string;
 	file_index: number;
-	kind: 'cell' | 'row' | 'page' | 'slide' | 'notes' | 'region' | 'chart';
+	kind: 'cell' | 'row' | 'page' | 'slide' | 'notes' | 'region' | 'chart' | 'paragraph';
 	location: Record<string, string | number | boolean | null>;
 	excerpt: string;
 	record_id?: string;
