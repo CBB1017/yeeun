@@ -152,6 +152,36 @@ export const fileGrants = pgTable(
 	]
 );
 
+// ---------- uploaded originals (files attached from the user's PC) ----------
+
+export const uploadedOriginals = pgTable(
+	'uploaded_originals',
+	{
+		id: id(),
+		ownerId: uuid('owner_id')
+			.notNull()
+			.references(() => users.id),
+		/** Display only (path inside the ZIP for unpacked files); never a path segment. */
+		displayName: text('display_name').notNull(),
+		mimeType: text('mime_type').notNull(),
+		extension: text('extension').notNull(),
+		sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+		sha256: text('sha256').notNull(),
+		storageRootId: uuid('storage_root_id')
+			.notNull()
+			.references(() => storageRoots.id),
+		relativePath: text('relative_path').notNull(),
+		archiveName: text('archive_name'),
+		status: text('status').notNull().default('active'),
+		createdAt: createdAt(),
+		deletedAt: ts('deleted_at')
+	},
+	(t) => [
+		index('uploaded_originals_owner_idx').on(t.ownerId, t.status),
+		check('uploaded_originals_status_ck', sql`${t.status} in ('active','deleted')`)
+	]
+);
+
 // ---------- tasks & schedules ----------
 
 export const taskDrafts = pgTable(
@@ -205,14 +235,17 @@ export const taskSources = pgTable(
 		ownerId: uuid('owner_id')
 			.notNull()
 			.references(() => users.id),
-		grantId: uuid('grant_id')
-			.notNull()
-			.references(() => fileGrants.id),
+		grantId: uuid('grant_id').references(() => fileGrants.id),
+		uploadId: uuid('upload_id').references(() => uploadedOriginals.id),
 		providerFileId: text('provider_file_id').notNull(),
 		selector: jsonb('selector').notNull().default({}),
 		position: integer('position').notNull().default(0)
 	},
-	(t) => [uniqueIndex('task_sources_task_pos_uq').on(t.taskId, t.position)]
+	(t) => [
+		uniqueIndex('task_sources_task_pos_uq').on(t.taskId, t.position),
+		index('task_sources_upload_idx').on(t.uploadId),
+		check('task_sources_one_source_ck', sql`num_nonnulls(${t.grantId}, ${t.uploadId}) = 1`)
+	]
 );
 
 export const schedules = pgTable(
@@ -364,6 +397,7 @@ export const sourceSnapshots = pgTable(
 			.references(() => runs.id),
 		ownerId: uuid('owner_id').notNull(),
 		grantId: uuid('grant_id').references(() => fileGrants.id),
+		uploadId: uuid('upload_id').references(() => uploadedOriginals.id),
 		providerFileId: text('provider_file_id').notNull(),
 		name: text('name').notNull(),
 		mimeType: text('mime_type').notNull(),
