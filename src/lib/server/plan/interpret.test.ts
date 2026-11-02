@@ -110,3 +110,16 @@ describe('schedule math', () => {
 		expect(nextSeoulMidnight(new Date('2026-11-02T15:00:00Z')).toISOString()).toBe('2026-11-03T15:00:00.000Z');
 	});
 });
+
+describe('Drive search hints for Word and Hangul files', () => {
+	it('maps 한글 파일 / 워드 문서 to their MIME types without using them as name keywords', async () => {
+		const { searchHints } = await import('./interpret');
+		const h = searchHints('연구과제 공고 한글 파일에서 마감일 찾아줘');
+		expect(h.mimeTypes).toContain('application/x-hwp');
+		expect(h.keywords).toContain('연구과제');
+		expect(h.keywords).not.toContain('한글');
+		const w = searchHints('예산 워드 문서 요약해줘');
+		expect(w.mimeTypes).toContain('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+		expect(w.keywords).toEqual(['예산']);
+	});
+});

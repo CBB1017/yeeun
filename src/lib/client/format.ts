@@ -152,6 +152,8 @@ export function mimeLabel(mime: string): string {
 	if (m.includes('google-apps.document')) return 'Google 문서';
 	if (m.includes('spreadsheetml') || m.endsWith('ms-excel')) return '엑셀';
 	if (m.includes('presentationml') || m.endsWith('ms-powerpoint')) return '파워포인트';
+	if (m.includes('wordprocessingml') || m === 'application/msword') return '워드';
+	if (m.includes('hwp') || m.includes('hancom')) return '한글';
 	if (m === 'text/csv') return 'CSV';
 	if (m.includes('tab-separated')) return 'TSV';
 	if (m === 'application/pdf') return 'PDF';

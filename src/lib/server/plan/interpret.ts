@@ -232,7 +232,8 @@ const SEARCH_STOP = new Set([
 	'마감', '이내', '안에', '동안', '한달', '달', '일', '주', '매일', '매주', '평일', '주말', '오전', '오후', '시', '분',
 	'월', '화', '수', '목', '금', '토', '요일', '메일', '이메일', '푸시', '알림', '보내줘', '보내', '찾아줘', '찾아', '만들어줘',
 	'정리해줘', '요약', '요약해줘', '있는', '해당', '관련', '내', '나의', '그', '이', '저', 'pdf', 'csv', 'xlsx', 'ppt', 'pptx',
-	'엑셀', 'excel', '스프레드시트', '파워포인트', '슬라이드', '문서', '시트', 'drive', '드라이브', '구글', 'google', '폴더'
+	'엑셀', 'excel', '스프레드시트', '파워포인트', '슬라이드', '문서', '시트', 'drive', '드라이브', '구글', 'google', '폴더',
+	'워드', 'word', 'docx', 'doc', '한글', 'hwp', 'hwpx', '아래아'
 ]);
 const PARTICLES = /(에서|으로|부터|까지|에게|한테|이랑|하고|처럼|보다|에는|에서의|의|을|를|은|는|이|가|에|로|와|과|도|만)$/;
 
@@ -255,7 +256,19 @@ export const MIME_HINTS: { re: RegExp; mimes: string[] }[] = [
 			'application/vnd.google-apps.presentation'
 		]
 	},
-	{ re: /\bcsv\b/i, mimes: ['text/csv'] }
+	{ re: /\bcsv\b/i, mimes: ['text/csv'] },
+	{
+		re: /워드|\bword\b|\bdocx?\b/i,
+		mimes: [
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			'application/msword',
+			'application/vnd.google-apps.document'
+		]
+	},
+	{
+		re: /한글\s*(파일|문서)|아래아\s*한글|\bhwpx?\b/i,
+		mimes: ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp', 'application/vnd.hancom.hwpx', 'application/hwp+zip']
+	}
 ];
 
 /** Keywords (file-name clues) and MIME types implied by a natural-language request. */
