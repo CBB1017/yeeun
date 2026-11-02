@@ -105,7 +105,9 @@ services:
       PORT: "3000"
       HOST: 0.0.0.0
       SHUTDOWN_TIMEOUT: "20"
-      BODY_SIZE_LIMIT: 2M
+      # Raw file uploads (/api/uploads) up to the per-file source limit; JSON API bodies
+      # are separately capped at 2 MB in the app.
+      BODY_SIZE_LIMIT: ${MAX_SOURCE_FILE_BYTES:-104857600}
     secrets: *app-secrets
     volumes:
       - type: bind

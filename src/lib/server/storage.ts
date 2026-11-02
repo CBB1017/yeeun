@@ -22,6 +22,15 @@ export function runRelativeDir(ownerId: string, runId: string, area: RunArea): s
 	return path.posix.join('users', ownerId, 'runs', runId, area);
 }
 
+/**
+ * Retained originals attached from the user's PC: users/<uuid>/originals/<generated name>.
+ * Outside every run directory, so per-run cleanup never touches them.
+ */
+export function originalsRelativeDir(ownerId: string): string {
+	if (!UUID_RE.test(ownerId)) throw new AppError('STORAGE_FAILED', 'invalid id');
+	return path.posix.join('users', ownerId, 'originals');
+}
+
 export function generatedName(ext: string): string {
 	const clean = ext.replace(/^\./, '').toLowerCase();
 	if (!/^[a-z0-9]{1,8}$/.test(clean)) throw new AppError('STORAGE_FAILED', 'invalid extension');

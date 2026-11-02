@@ -42,10 +42,38 @@ export function requireMutation(event: RequestEvent): SessionUser {
 	return u;
 }
 
+/** JSON bodies stay small even though the server accepts large file uploads. */
+export const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Read a request body into memory, refusing it as soon as it exceeds `limit`
+ * (Content-Length is checked first; chunked bodies are counted while read).
+ */
+export async function readBodyLimited(request: Request, limit: number, tooLarge: () => AppError): Promise<Buffer> {
+	const declared = Number(request.headers.get('content-length') ?? NaN);
+	if (Number.isFinite(declared) && declared > limit) throw tooLarge();
+	if (!request.body) return Buffer.alloc(0);
+	const reader = request.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.byteLength;
+		if (size > limit) {
+			await reader.cancel().catch(() => {});
+			throw tooLarge();
+		}
+		chunks.push(value);
+	}
+	return Buffer.concat(chunks);
+}
+
 export async function body<T extends z.ZodType>(event: RequestEvent, schema: T): Promise<z.infer<T>> {
 	let raw: unknown;
+	const buf = await readBodyLimited(event.request, MAX_JSON_BODY_BYTES, () => new AppError('VALIDATION_FAILED', '요청 본문이 너무 큽니다'));
 	try {
-		raw = await event.request.json();
+		raw = JSON.parse(buf.toString('utf8'));
 	} catch {
 		throw new AppError('VALIDATION_FAILED', 'JSON 본문이 필요합니다');
 	}
