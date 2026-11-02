@@ -23,6 +23,7 @@
 		FORMAT_LABEL
 	} from '#lib/client/format.ts';
 	import type { Draft, Grant, Operation, OutputFormat, PublicRun, SourceSelector, TaskPlan } from '#lib/client/types.ts';
+	import { sourceKey } from '#lib/shared/plan.ts';
 
 	type Props = { draft: Draft; grants: Grant[] };
 	let { draft: initial, grants }: Props = $props();
@@ -75,10 +76,14 @@
 
 	function useGrant(g: Grant, replaceIndex: number | null = null) {
 		const src = { grant_id: g.id, provider_file_id: g.providerFileId, name: g.name, mime_type: g.mimeType, selector: defaultSelector() };
-		if (plan.sources.some((s) => s.grant_id === g.id)) return;
+		if (usesGrant(g.id)) return;
 		if (replaceIndex !== null && plan.sources[replaceIndex]) plan.sources[replaceIndex] = src;
 		else plan.sources.push(src);
 		announce(`${g.name}을(를) 원본 파일로 선택했습니다`);
+	}
+
+	function usesGrant(id: string, index?: number) {
+		return index === undefined ? plan.sources.some((s) => 'grant_id' in s && s.grant_id === id) : (plan.sources[index] as { grant_id?: string } | undefined)?.grant_id === id;
 	}
 
 	function removeSource(i: number) {
@@ -266,7 +271,7 @@
 											{#each q.options.length ? q.options.map((o) => grantById.get(o.value)).filter((g): g is Grant => !!g) : grants.slice(0, 20) as g (g.id)}
 												<li>
 													<label class="check-row rounded-[8px] px-2 hover:bg-surface">
-														<input type="radio" class="check" name="q-source" checked={plan.sources[0]?.grant_id === g.id} disabled={readOnly} onchange={() => useGrant(g, 0)} />
+														<input type="radio" class="check" name="q-source" checked={usesGrant(g.id, 0)} disabled={readOnly} onchange={() => useGrant(g, 0)} />
 														<span class="min-w-0">
 															<span class="block font-semibold break-words">{g.name}</span>
 															<span class="block text-sm text-muted">{mimeLabel(g.mimeType)} · 수정 {fmtDateTime(g.modifiedAt)}{g.folderLabel ? ` · ${g.folderLabel}` : ''}</span>
@@ -325,19 +330,21 @@
 				<h2 id="src-title" class="section-title flex items-center gap-2"><FileSpreadsheet size={20} /> 원본 파일</h2>
 				<Button size="sm" onclick={() => (pickerOpen = true)} disabled={readOnly || plan.sources.length >= 10} data-testid="open-source-picker"><Plus size={16} />파일 선택·Drive 검색</Button>
 			</div>
-			<p class="hint mt-1">허용한 파일 중에서만 고를 수 있습니다. 실행할 때마다 같은 파일 ID의 최신 내용을 가져오며, 파일을 찾지 못하면 다른 파일로 대체하지 않고 오류로 알립니다.</p>
+			<p class="hint mt-1">허용한 Drive 파일 또는 홈에서 PC로 첨부한 파일만 쓸 수 있습니다. Drive 파일은 실행할 때마다 같은 파일 ID의 최신 내용을 가져오고, 첨부한 파일은 보관된 원본을 그대로 씁니다. 파일을 찾지 못하면 다른 파일로 대체하지 않고 오류로 알립니다.</p>
 			{#if plan.sources.length === 0}
 				<p class="mt-3 font-semibold text-warning">아직 선택한 파일이 없습니다.</p>
 			{/if}
 			<ol class="mt-3 space-y-4">
-				{#each plan.sources as s, i (s.grant_id)}
-					{@const g = grantById.get(s.grant_id)}
+				{#each plan.sources as s, i (sourceKey(s))}
+					{@const g = 'grant_id' in s ? grantById.get(s.grant_id) : undefined}
 					{@const kind = kindOf(s.mime_type)}
 					<li class="rounded-[8px] border border-line-soft p-3">
 						<div class="flex flex-wrap items-start justify-between gap-2">
 							<div class="min-w-0">
 								<p class="font-semibold break-words">파일 {i + 1}. {s.name}</p>
-								<p class="text-sm text-muted">{mimeLabel(s.mime_type)}{g ? ` · 수정 ${fmtDateTime(g.modifiedAt)}` : ' · 허용 목록에 없음'}{g?.folderLabel ? ` · ${g.folderLabel}` : ''}</p>
+								<p class="text-sm text-muted">
+									{mimeLabel(s.mime_type)}{'upload_id' in s ? ' · PC에서 첨부한 파일 (보관된 원본)' : g ? ` · 수정 ${fmtDateTime(g.modifiedAt)}` : ' · 허용 목록에 없음'}{g?.folderLabel ? ` · ${g.folderLabel}` : ''}
+								</p>
 							</div>
 							<Button size="sm" variant="ghost" onclick={() => removeSource(i)} disabled={readOnly} aria-label="파일 {i + 1} {s.name} 빼기"><Trash size={16} />빼기</Button>
 						</div>
@@ -417,7 +424,7 @@
 									<div>
 										<label for="op-{i}-source" class="label">파일</label>
 										<select id="op-{i}-source" class="input" bind:value={op.source_index}>
-											{#each plan.sources as s, si (s.grant_id)}<option value={si}>파일 {si + 1}. {s.name}</option>{/each}
+											{#each plan.sources as s, si (sourceKey(s))}<option value={si}>파일 {si + 1}. {s.name}</option>{/each}
 											{#if plan.sources.length === 0}<option value={0}>(파일을 먼저 선택)</option>{/if}
 										</select>
 									</div>
@@ -701,7 +708,7 @@
 		<input id="picker-q" type="search" class="input" bind:value={pickerQuery} autocomplete="off" />
 		<ul class="mt-3 divide-y divide-line-soft">
 			{#each filteredGrants as g (g.id)}
-				{@const chosen = plan.sources.some((s) => s.grant_id === g.id)}
+				{@const chosen = usesGrant(g.id)}
 				<li class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
 					<div class="min-w-0">
 						<p class="font-semibold break-words">{g.name}</p>

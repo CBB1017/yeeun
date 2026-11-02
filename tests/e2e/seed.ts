@@ -113,6 +113,7 @@ export async function cleanup(c?: pg.Client) {
 				`delete from tasks where owner_id = any($1::uuid[])`,
 				`delete from authoring_calls where owner_id = any($1::uuid[])`,
 				`delete from task_drafts where owner_id = any($1::uuid[])`,
+				`delete from uploaded_originals where owner_id = any($1::uuid[])`,
 				`delete from file_grants where owner_id = any($1::uuid[])`,
 				`delete from oauth_connections where owner_id = any($1::uuid[])`,
 				`delete from push_subscriptions where owner_id = any($1::uuid[])`,
@@ -138,6 +139,21 @@ export async function cleanup(c?: pg.Client) {
 	} finally {
 		if (own) await client.end();
 	}
+}
+
+/**
+ * The seed runs as root inside the e2e container, but web/worker run as the
+ * `node` user (uid 1000) and must be able to add folders under users/ (e.g.
+ * originals uploaded during a test). Hand what the seed created to that user.
+ */
+const APP_UID = Number(process.env.APP_UID ?? 1000);
+function giveToApp(dir: string) {
+	if (typeof process.getuid !== 'function' || process.getuid() !== 0 || !fs.existsSync(dir)) return;
+	const walk = (p: string) => {
+		fs.lchownSync(p, APP_UID, APP_UID);
+		if (fs.lstatSync(p).isDirectory()) for (const e of fs.readdirSync(p)) walk(path.join(p, e));
+	};
+	walk(dir);
 }
 
 async function activeRoot(c: pg.Client) {
@@ -470,6 +486,7 @@ export async function seed(): Promise<SeedIds> {
 		const rcv = await reviewRun(c, root, C.id, TC, pc, ago(45));
 
 		await c.query('commit');
+		giveToApp(path.join(root.path, 'users'));
 
 		const ids: SeedIds = { admin: A.id, other: B.id, reviewer: C.id, taskDeadline: T1, taskSales: T2, runCompleted: rc, runZero: rz, runFailed: rf, runReview: rr, runQueued: rq, runOther: rb, runReviewerOwn: rcv, grantIds: grants.map((g) => g.id) };
 		fs.mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });

@@ -81,6 +81,53 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
 	return payload.data as T;
 }
 
+/**
+ * Upload one file as the raw request body (XHR so the UI can show progress).
+ * The name travels URI-encoded in `x-file-name`; the server decides the type
+ * from the extension and the content.
+ */
+export async function uploadFile<T>(
+	file: Blob,
+	name: string,
+	opts: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {}
+): Promise<T> {
+	await ensureCsrf(fetch);
+	return new Promise<T>((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open('POST', '/api/uploads');
+		xhr.setRequestHeader('accept', 'application/json');
+		xhr.setRequestHeader('content-type', 'application/octet-stream');
+		xhr.setRequestHeader('x-csrf-token', csrfToken ?? '');
+		xhr.setRequestHeader('x-file-name', encodeURIComponent(name));
+		xhr.upload.onprogress = (e) => {
+			if (e.lengthComputable && e.total > 0) opts.onProgress?.(e.loaded / e.total);
+		};
+		xhr.onerror = () => reject(new ApiError(0, 'NETWORK_FAILED', '서버에 연결할 수 없습니다. 네트워크 상태를 확인한 뒤 다시 시도하세요.'));
+		xhr.onabort = () => reject(new DOMException('aborted', 'AbortError'));
+		xhr.onload = () => {
+			let payload: { data?: T; error?: { code?: string; message?: string; stage?: string | null }; request_id?: string } | null = null;
+			try {
+				payload = JSON.parse(xhr.responseText);
+			} catch {
+				payload = null;
+			}
+			if (xhr.status < 200 || xhr.status >= 300 || !payload || payload.error) {
+				const e = payload?.error;
+				if (e?.code === 'CSRF_FAILED') csrfToken = null;
+				const fallback = xhr.status === 413 ? '파일 크기 한도를 넘습니다' : `업로드하지 못했습니다 (HTTP ${xhr.status})`;
+				reject(new ApiError(xhr.status, e?.code ?? 'EXECUTION_FAILED', e?.message ?? fallback, e?.stage ?? null, payload?.request_id ?? null));
+				return;
+			}
+			resolve(payload.data as T);
+		};
+		if (opts.signal) {
+			if (opts.signal.aborted) return xhr.abort();
+			opts.signal.addEventListener('abort', () => xhr.abort(), { once: true });
+		}
+		xhr.send(file);
+	});
+}
+
 /** Loader helper: 401 -> login, 404 -> not-found page (never leaks whether another user's id exists). */
 export async function load<T>(f: typeof fetch, path: string): Promise<T> {
 	try {

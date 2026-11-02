@@ -12,6 +12,7 @@
 	import { announce } from '#lib/client/live.svelte.ts';
 	import { describeOperation, describeRule, fmtDateTime, mimeLabel, FORMAT_LABEL, TRIGGER_LABEL } from '#lib/client/format.ts';
 	import type { PublicRun } from '#lib/client/types.ts';
+	import { sourceKey } from '#lib/shared/plan.ts';
 
 	let { data }: PageProps = $props();
 	const task = $derived(data.detail.task);
@@ -110,7 +111,7 @@
 					<dt>원본 파일</dt>
 					<dd>
 						<ul>
-							{#each plan.sources as s, i (s.grant_id)}
+							{#each plan.sources as s, i (sourceKey(s))}
 								<li class="break-words">{i + 1}. {s.name} <span class="text-sm text-muted">({mimeLabel(s.mime_type)}{s.selector.sheet ? `, 시트 ${s.selector.sheet}` : ''})</span></li>
 							{/each}
 						</ul>
