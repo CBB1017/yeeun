@@ -59,7 +59,12 @@ export const invitations = pgTable(
 		role: text('role').notNull().default('user'),
 		createdAt: createdAt(),
 		acceptedAt: ts('accepted_at'),
-		revokedAt: ts('revoked_at')
+		revokedAt: ts('revoked_at'),
+		emailStatus: text('email_status').notNull().default('not_requested'),
+		emailAttempts: integer('email_attempts').notNull().default(0),
+		emailAttemptedAt: ts('email_attempted_at'),
+		emailSentAt: ts('email_sent_at'),
+		emailLastError: text('email_last_error')
 	},
 	(t) => [
 		uniqueIndex('invitations_email_live_uq')
@@ -67,7 +72,9 @@ export const invitations = pgTable(
 			.where(sql`${t.status} <> 'revoked'`),
 		check('invitations_status_ck', sql`${t.status} in ('active','accepted','revoked')`),
 		check('invitations_email_lower_ck', sql`${t.email} = lower(${t.email})`),
-		check('invitations_role_ck', sql`${t.role} in ('admin','user')`)
+		check('invitations_role_ck', sql`${t.role} in ('admin','user')`),
+		check('invitations_email_status_ck', sql`${t.emailStatus} in ('not_requested','sending','sent','failed')`),
+		check('invitations_email_attempts_ck', sql`${t.emailAttempts} >= 0`)
 	]
 );
 

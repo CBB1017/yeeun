@@ -50,7 +50,7 @@ CLI는 제한된 작업 자료에서 선언적 결과를 반환한다. 임의 ho
 
 Google OIDC openid/email/profile과 별도 Drive drive.file offline consent. Google Picker에서 선택한 파일만 서버 권한 확인 후 활성 grant 목록에 등록한다. Picker의 선택 UI와 앱의 허용 목록 검색은 구분한다. drive.file이 쓰기도 허용하더라도 원본 write/delete API는 노출하지 않는다.
 
-초대는 관리자의 이메일 allowlist. 초기 관리자 verified Google 이메일은 운영 설정. OIDC issuer/audience/nonce/state/verified_email 검증, 식별은 Google subject. 초대는 최초 로그인 시 subject에 묶고 revoke 즉시 세션·작업·다운로드 차단. 초대 이메일 자동 발송은 필수가 아니며 관리자가 로그인 URL을 전달한다.
+초대는 관리자의 이메일 allowlist. 초기 관리자 verified Google 이메일은 운영 설정. OIDC issuer/audience/nonce/state/verified_email 검증, 식별은 Google subject. 초대는 최초 로그인 시 subject에 묶고 revoke 즉시 세션·작업·다운로드 차단. 후속 변경 send-invitation-emails에 따라 새 초대 생성 시 안내 메일을 한 번 시도하고, 기존 초대는 관리자 수동 발송으로 처리한다. 초대 권한과 SMTP 발송 상태는 분리한다.
 
 OAuth/SMTP secret은 AES-256-GCM으로 DB 암호화, master/session keys는 Docker secret. HttpOnly/Secure/SameSite cookie 및 CSRF/Origin 검사. 모든 API/SSE/download/worker에서 owner를 검사한다. 사용자 입력 owner_id·절대 파일 경로를 신뢰하지 않는다. 관리자 기본 화면도 타 사용자 문서 본문을 열람하지 않는다.
 

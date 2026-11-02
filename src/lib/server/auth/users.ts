@@ -4,6 +4,8 @@ import { config } from '../config';
 import { AppError } from '../errors';
 import { randomToken, sha256Hex } from '../crypto';
 import type { FlowResult } from './google-oidc';
+import { sendInvitationEmail } from './invitation-email';
+import type { Transports } from '../notify/transports';
 
 /** Invitation-only identity: users are keyed by Google subject; invitations by email. */
 
@@ -48,15 +50,13 @@ export async function signInWithGoogle(r: FlowResult): Promise<typeof schema.use
 				.insert(schema.invitations)
 				.values({ email: r.email, status: 'accepted', boundUserId: user!.id, role: 'admin', acceptedAt: new Date() });
 		}
-		await tx
-			.insert(schema.auditEvents)
-			.values({
-				actorId: user!.id,
-				action: 'user.created',
-				resourceType: 'user',
-				resourceId: user!.id,
-				meta: { via: inv ? 'invitation' : 'bootstrap' }
-			});
+		await tx.insert(schema.auditEvents).values({
+			actorId: user!.id,
+			action: 'user.created',
+			resourceType: 'user',
+			resourceId: user!.id,
+			meta: { via: inv ? 'invitation' : 'bootstrap' }
+		});
 		return user!;
 	});
 }
@@ -106,15 +106,24 @@ export async function listInvitations() {
 		.orderBy(sql`${schema.invitations.createdAt} desc`);
 }
 
-export async function invite(adminId: string, email: string, role: 'admin' | 'user' = 'user') {
+export async function invite(adminId: string, email: string, role: 'admin' | 'user' = 'user', transports?: Transports) {
 	const e = email.trim().toLowerCase();
 	if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new AppError('VALIDATION_FAILED', '이메일 형식 오류');
-	const [row] = await db().insert(schema.invitations).values({ email: e, invitedBy: adminId, role }).onConflictDoNothing().returning();
-	if (!row) throw new AppError('CONFLICT', '이미 초대된 이메일');
-	await db()
-		.insert(schema.auditEvents)
-		.values({ actorId: adminId, action: 'invitation.created', resourceType: 'invitation', resourceId: row.id, meta: {} });
-	return row;
+	const [admin] = await db()
+		.select({ role: schema.users.role, active: schema.users.active })
+		.from(schema.users)
+		.where(eq(schema.users.id, adminId))
+		.limit(1);
+	if (!admin?.active || admin.role !== 'admin') throw new AppError('NOT_FOUND', 'not found');
+	const row = await db().transaction(async (tx) => {
+		const [created] = await tx.insert(schema.invitations).values({ email: e, invitedBy: adminId, role }).onConflictDoNothing().returning();
+		if (!created) throw new AppError('CONFLICT', '이미 초대된 이메일');
+		await tx
+			.insert(schema.auditEvents)
+			.values({ actorId: adminId, action: 'invitation.created', resourceType: 'invitation', resourceId: created.id, meta: {} });
+		return created;
+	});
+	return sendInvitationEmail(adminId, row.id, 0, transports);
 }
 
 /** Revoke immediately blocks sessions, task execution and downloads for the bound user. */

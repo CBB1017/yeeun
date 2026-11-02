@@ -54,3 +54,12 @@ Google Cloud Console에서 OAuth 클라이언트(웹)를 만들고 승인된 리
 - 타입: `docker compose run --rm tools sh -c "npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json"`
 - E2E/접근성: `docker compose --profile e2e run --rm e2e npx playwright test`
 - 라이브 CLI(구독 사용량 소모): 2절 참조.
+
+
+## 초대 안내 메일
+
+관리 화면의 **초대하고 메일 보내기**는 로그인 허용 목록 등록 후 관리자에게 허용된 발신 프로필(없으면 운영자 기본 SMTP)로 안내 메일을 1회 보냅니다. 메일 발송 실패와 초대 권한은 별개이며 실패해도 초대된 Google 계정은 로그인할 수 있습니다.
+
+기존 초대는 자동 발송하지 않습니다. 가입 전인 기존 초대 행의 **메일 보내기/메일 다시 보내기**를 누르고 수신 대상을 확인하세요. 상태는 미발송/발송 중·완료 미확인/SMTP 접수 완료/발송 실패로 표시됩니다. SMTP 접수 완료는 수신함 도착 보장이 아닙니다. 실패 자동 재시도는 없고 취소·가입 완료된 초대에는 보내지 않습니다.
+
+발송 중 프로세스가 중단되면 실제 접수 여부가 불확실할 수 있습니다. 5분 후 관리 화면을 새로고침하면 명시적으로 다시 보낼 수 있으나 같은 메일이 중복 도착할 수 있습니다. SMTP 587은 SMTP_SECURE=false와 STARTTLS 필수 설정을 사용합니다.

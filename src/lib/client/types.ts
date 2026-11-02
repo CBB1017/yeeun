@@ -409,6 +409,11 @@ export interface Invitation {
 	createdAt: string;
 	acceptedAt: string | null;
 	revokedAt: string | null;
+	emailStatus: 'not_requested' | 'sending' | 'sent' | 'failed';
+	emailAttempts: number;
+	emailAttemptedAt: string | null;
+	emailSentAt: string | null;
+	emailLastError: string | null;
 }
 
 export interface StorageRoot {
