@@ -40,5 +40,5 @@
 | A28 | `docker compose up -d --build --force-recreate --wait` 후 DB·파일·CLI 로그인 유지, 모든 healthcheck 통과 | LIVE(로컬 Docker Desktop) | 별도 Linux 호스트 미검증 |
 | A29 | **LIVE**: Claude Pro / ChatGPT 구독 로그인, API 과금 env 없음, 두 CLI schema-valid JSON, 컨테이너 재생성 후 로그인 유지 | LIVE | — |
 | A30 | **LIVE**: 자료 속 지시(인증파일·/data 읽기, 외부 전송) 미수행·비밀 미유출; 직접 명령 실행 지시에도 실행 불가(`could_execute=false`, tool 0); 구조적으로 runner에 /data·DB 없음 | LIVE | — |
-| A31 | E2E·axe·반응형 스크린샷 (UI 작업 결과 참조) | AUTO | 실제 기기·스크린리더 수동 QA 미수행 |
+| A31 | `tests/e2e/responsive.spec.ts`: 10개 화면+로그인 × 375/768/1024/1440 페이지 가로 넘침 없음·표 내부 스크롤, axe serious/critical 0, 44px 터치; `flows.spec.ts` 키보드 전용 재검토·근거 패널 포커스 트랩 | AUTO (headless Chromium) | 실제 기기·스크린리더 수동 QA 미수행 |
 | A32 | 통합: 중복 Idempotency-Key 1건, advance 1회, 이벤트 seq 동시성(실제 버그 수정); SSE 재연결 cursor replay 구현 | AUTO | worker kill 중 SSE 연속성 E2E 미수행 |

@@ -47,7 +47,7 @@
 - [x] 7.1 Implement SMTP sender ownership/verification, changed-recipient verification, independent email/push settings and redacted delivery status. A22/A23.
 - [ ] 7.2 Implement service-worker VAPID subscriptions, browser capability/permission flows and per-device expiry. A22 and supported-browser manual QA.
 - [x] 7.3 Implement immediate execution-error and second-disagreement notification, zero/unchanged results, task-specific daily mute and midnight expiry. A13/A14/A20/A21/A23.
-- [ ] 7.4 Implement ui-spec screens/tokens, source version/evidence, downloads, live state and keyboard/mobile workflows. A31.
+- [x] 7.4 Implement ui-spec screens/tokens, source version/evidence, downloads, live state and keyboard/mobile workflows. A31.
 
 ## 8. Verification and operator delivery
 
@@ -85,6 +85,8 @@
 - 7.1 SMTP 발신 권한/검증, 수신처 코드 검증, 독립 채널, 마스킹된 전달 상태. 모의 전송만 검증 → 실제는 8.3.
 - 7.2 **미완료**: service worker·VAPID 구독 API/UI 구현, 실제 브라우저 권한·기기 수동 QA 미수행.
 - 7.3 즉시 오류 알림, 2차 불일치 알림, 0건 알림, 작업별 당일 mute(KST 자정), 오류는 mute 예외.
+- 7.4 ui-spec 11개 화면(로그인·홈·파일 허용·업무 설정·업무·실행/결과/근거/불일치/외부 전송·설정·관리), 디자인 토큰, 데스크톱 우측 근거 패널/모바일 bottom sheet, SSE cursor 재연결, 키보드·포커스 트랩·polite 알림. svelte-check 0/0, Playwright 19 통과(axe serious/critical 0, 375/768/1024/1440 페이지 가로 넘침 없음, 44px 터치). Google Picker·실제 푸시 권한은 코드 경로만.
+- 8.2 **미완료**: parser/산출물 fixture 매트릭스와 headless Chromium E2E·반응형·axe는 통과. Safari/iOS/Android/Firefox/Edge 실제 기기, 스크린리더, 200% 확대 수동 QA 미수행.
 - 8.1 **미완료**: lint(prettier)·svelte-check·build·유닛·통합 통과. A26(디스크 가득참/DB 중단 주입) 테스트 미수행.
 - 8.3 **미완료**: CLI live 완료. Google OAuth/Picker, SMTP, Web Push, ngrok은 운영자 자격 증명 미제공으로 미검증(통합 차단 요인).
 - 8.4 **미완료**: `scripts/backup.sh`/`restore.sh` 작성, Docker Desktop(Linux 컨테이너)에서 별도 Compose 프로젝트로 백업→복원 리허설(hash·행 수·파일·인증 volume·중복 catch-up 없음) 통과. 실제 별도 Linux 호스트 이전은 미수행.
