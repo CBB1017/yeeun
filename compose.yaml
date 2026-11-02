@@ -246,9 +246,12 @@ services:
     # ngrok 3.39.13 (verified with `ngrok version`), pinned by digest
     image: ngrok/ngrok:3@sha256:ff3b5c3674432d14a786349908b7bdf28ee56c25662637afcbe7180d471993ef
     restart: unless-stopped
-    command: ["http", "--url=${NGROK_DOMAIN:-}", "web:3000"]
+    # ngrok does not read *_FILE variables: load the token from the Docker secret at start.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'NGROK_AUTHTOKEN="$$(cat /run/secrets/ngrok_authtoken)" exec ngrok http --log=stdout --url="$$NGROK_URL" web:3000'
     environment:
-      NGROK_AUTHTOKEN_FILE: /run/secrets/ngrok_authtoken
+      NGROK_URL: ${NGROK_DOMAIN:-}
     secrets: [ngrok_authtoken]
     networks: [frontend]
     depends_on:
